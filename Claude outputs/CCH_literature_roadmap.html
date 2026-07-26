@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; padding: 16px; background: transparent; color: var(--text-primary, #1a1a1a); font-size: 13px; }
+  h2 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { font-size: 11px; opacity: 0.55; margin-bottom: 14px; }
+  .phase { margin-bottom: 18px; }
+  .phase-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .phase-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .phase-title { font-size: 13px; font-weight: 600; }
+  .cards { display: flex; flex-direction: column; gap: 6px; }
+  .card { border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: opacity 0.15s; border-left: 3px solid transparent; }
+  .card:hover { opacity: 0.82; }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .card-ref { font-size: 12px; font-weight: 600; flex: 1; }
+  .card-tag { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 20px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; margin-top: 1px; }
+  .card-desc { font-size: 11px; opacity: 0.7; margin-top: 3px; line-height: 1.5; }
+  .card-why { font-size: 10px; margin-top: 5px; opacity: 0.55; font-style: italic; }
+  /* Pillar colours */
+  .p-cch  { background: #e05a5a18; border-left-color: #e05a5a; }
+  .p-sph  { background: #5a8fe018; border-left-color: #5a8fe0; }
+  .p-ai   { background: #2ab59618; border-left-color: #2ab596; }
+  .p-stat { background: #e0a03018; border-left-color: #e0a030; }
+  .t-cch  { background: #e05a5a22; color: #c03030; }
+  .t-sph  { background: #5a8fe022; color: #2860b0; }
+  .t-ai   { background: #2ab59622; color: #18836a; }
+  .t-stat { background: #e0a03022; color: #a06010; }
+  .t-meth { background: #8860d022; color: #6040a0; }
+  /* Phase badge colours */
+  .b1 { background: #e8e8e8; color: #444; }
+  .b2 { background: #ddeeff; color: #1a4a80; }
+  .b3 { background: #ffe0cc; color: #a03010; }
+  .b4 { background: #d4f4e8; color: #126040; }
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #88888822; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 10px; opacity: 0.7; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<h2>Literature roadmap — CCH, SPH &amp; AI flood prediction</h2>
+<p class="subtitle">Organised as a progressive reading sequence. Click any card to prompt a deeper explanation.</p>
+
+<!-- PHASE 1 -->
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-badge b1">Phase 1</span>
+    <span class="phase-title">Conceptual foundations — read first</span>
+  </div>
+  <div class="cards">
+    <div class="card p-cch" onclick="sendPrompt('Explain the typology proposed by Zscheischler et al. 2020 — what are preconditioned, multivariate, temporally compounding, and spatially compounding events?')">
+      <div class="card-top">
+        <span class="card-ref">Zscheischler et al. (2020) — Nature Reviews Earth &amp; Environment</span>
+        <span class="card-tag t-cch">CCH</span>
+      </div>
+      <div class="card-desc">The definitive typology of compound weather and climate events. Proposes four categories: preconditioned, multivariate, temporally compounding, and spatially compounding. Adopted by IPCC AR6.</div>
+      <div class="card-why">Start here. This paper defines the vocabulary the entire field uses. Every subsequent paper cites it.</div>
+    </div>
+    <div class="card p-stat" onclick="sendPrompt('Explain the copula framework for multivariate return periods introduced by Salvadori and De Michele 2004 — what is Sklar\'s theorem and how does it apply to flood frequency analysis?')">
+      <div class="card-top">
+        <span class="card-ref">Salvadori &amp; De Michele (2004) — Water Resources Research</span>
+        <span class="card-tag t-stat">Copula / Stats</span>
+      </div>
+      <div class="card-desc">Foundational paper introducing copulas to hydrology. Derives joint return periods (AND/OR definitions) for bivariate events such as flood peak and volume. Theoretically rigorous but accessible.</div>
+      <div class="card-why">The mathematical backbone. Read alongside a copula textbook chapter — Nelsen (2006) "Introduction to Copulas" is the standard reference.</div>
+    </div>
+    <div class="card p-sph" onclick="sendPrompt('What is the SPHysics framework — explain the governing equations, kernel functions, and how DualSPHysics implements them for engineering applications?')">
+      <div class="card-top">
+        <span class="card-ref">Gómez-Gesteira et al. (2012) — Computers &amp; Geosciences</span>
+        <span class="card-tag t-sph">SPH</span>
+      </div>
+      <div class="card-desc">The SPHysics framework paper — describes the SPH governing equations, kernel functions, boundary conditions, and validation test cases. The theoretical foundation for DualSPHysics.</div>
+      <div class="card-why">Required reading before touching DualSPHysics. Sets out the Lagrangian formulation in accessible engineering terms.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE 2 -->
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-badge b2">Phase 2</span>
+    <span class="phase-title">Core methodology — build the toolkit</span>
+  </div>
+  <div class="cards">
+    <div class="card p-stat" onclick="sendPrompt('Explain the Serinaldi and Kilsby 2015 paper — what do they mean by stationarity is undead and why does uncertainty dominate extreme value distributions?')">
+      <div class="card-top">
+        <span class="card-ref">Serinaldi &amp; Kilsby (2015) — Advances in Water Resources</span>
+        <span class="card-tag t-stat">Non-stationarity</span>
+      </div>
+      <div class="card-desc">Critical methodological paper arguing that non-stationarity adds model uncertainty that often exceeds sampling uncertainty. Challenges naive use of time-varying return periods. A necessary counterweight to over-confident non-stationary models.</div>
+      <div class="card-why">Read this before claiming your model accounts for climate change — it will sharpen your thinking about what you can and cannot infer from short records.</div>
+    </div>
+    <div class="card p-cch" onclick="sendPrompt('How did Bevacqua et al. 2019 use vine copulas to quantify compound flooding probability from storm surge and precipitation across Europe?')">
+      <div class="card-top">
+        <span class="card-ref">Bevacqua et al. (2019) — Science Advances</span>
+        <span class="card-tag t-cch">Compound Flood</span>
+      </div>
+      <div class="card-desc">Quantifies joint probability of storm surge and heavy precipitation across European coasts using vine copulas. Shows that climate change will increase compound flood probability substantially. A template for regional compound flood studies.</div>
+      <div class="card-why">The go-to methodological template for a coastal compound flooding study using copulas. Code and data are publicly available.</div>
+    </div>
+    <div class="card p-sph" onclick="sendPrompt('Explain the DualSPHysics paper by Crespo et al. 2015 — what numerical innovations does it introduce and what civil engineering applications has it been validated for?')">
+      <div class="card-top">
+        <span class="card-ref">Crespo et al. (2015) — Computer Physics Communications</span>
+        <span class="card-tag t-sph">DualSPHysics</span>
+      </div>
+      <div class="card-desc">The main DualSPHysics code paper. Describes GPU-accelerated SPH, open-source implementation, and validation against dam-break and wave impact benchmarks. Essential for understanding the software you will use.</div>
+      <div class="card-why">Read alongside the DualSPHysics user guide. This gives you the theory behind every parameter you will set.</div>
+    </div>
+    <div class="card p-ai" onclick="sendPrompt('Summarise the Kratzert et al. 2018 paper on LSTM for rainfall-runoff modelling — how does it compare to traditional conceptual hydrological models?')">
+      <div class="card-top">
+        <span class="card-ref">Kratzert et al. (2018) — Hydrology &amp; Earth System Sciences</span>
+        <span class="card-tag t-ai">AI / LSTM</span>
+      </div>
+      <div class="card-desc">The landmark paper demonstrating that LSTM networks can match or outperform established conceptual rainfall-runoff models (SAC-SMA, HBV) without prior physical knowledge. Opened the door to data-driven hydrology at scale.</div>
+      <div class="card-why">The paper that convinced the hydrology community that deep learning is serious. Read before implementing any LSTM flood model.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE 3 -->
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-badge b3">Phase 3</span>
+    <span class="phase-title">Applied modeling — get close to your research problem</span>
+  </div>
+  <div class="cards">
+    <div class="card p-cch" onclick="sendPrompt('How does Ward et al. 2018 quantify the dependence between high sea levels and high river discharge in global delta regions using copulas?')">
+      <div class="card-top">
+        <span class="card-ref">Ward et al. (2018) — Environmental Research Letters</span>
+        <span class="card-tag t-cch">Compound Flood</span>
+      </div>
+      <div class="card-desc">Global-scale analysis of dependence between storm surge and river discharge in delta and estuary settings. Directly relevant to South Asian river systems including Nepal's major rivers that drain into the Gangetic delta. Uses copula-based dependence metrics.</div>
+      <div class="card-why">Particularly relevant given Nepal's context — major rivers (Koshi, Gandaki, Karnali) flow through delta systems where compound flooding is physically plausible.</div>
+    </div>
+    <div class="card p-sph" onclick="sendPrompt('How is SPH used to simulate debris flow impact forces on check dams and retention structures — what are the key papers and validation approaches?')">
+      <div class="card-top">
+        <span class="card-ref">Tan et al. (2022) — Acta Geotechnica / related debris flow SPH literature</span>
+        <span class="card-tag t-sph">SPH Debris</span>
+      </div>
+      <div class="card-desc">Covers multiphase SPH-DEM coupling for debris flow simulations. Quantifies impact pressures on rigid and flexible retention structures. Validation against scaled flume experiments. Directly applicable to check dam design in mountain catchments.</div>
+      <div class="card-why">Nepal sits in one of the world's most active debris flow zones. This thread connects SPH directly to your geographic context.</div>
+    </div>
+    <div class="card p-ai" onclick="sendPrompt('What is a physics-informed neural network (PINN) and how has it been applied to the shallow water equations for flood simulation?')">
+      <div class="card-top">
+        <span class="card-ref">Raissi et al. (2019) — Journal of Computational Physics</span>
+        <span class="card-tag t-ai">PINNs</span>
+      </div>
+      <div class="card-desc">The foundational PINNs paper. Shows how physical governing equations can be embedded as loss function terms in a neural network, constraining predictions to be physically consistent. Applied to fluid mechanics PDEs including Navier-Stokes.</div>
+      <div class="card-why">If you pursue the AI + SPH physics integration angle, this paper is the theoretical bridge between them.</div>
+    </div>
+    <div class="card p-cch" onclick="sendPrompt('What are multi-hazard fragility functions and how are they derived for infrastructure under compound flood loading?')">
+      <div class="card-top">
+        <span class="card-ref">Sadegh et al. (2018) — Geophysical Research Letters</span>
+        <span class="card-tag t-cch">Multi-hazard</span>
+      </div>
+      <div class="card-desc">Develops multi-hazard scenarios for compound extreme events using copula methods. Introduces the MvCAT toolbox (Multivariate Copula Analysis Toolbox) for R and MATLAB. Directly applicable to infrastructure fragility analysis under compound loading.</div>
+      <div class="card-why">The MvCAT toolbox is a ready-to-use implementation of copula fitting — reduces coding overhead significantly for your first compound flood model.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE 4 -->
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-badge b4">Phase 4</span>
+    <span class="phase-title">Research frontier — define your contribution</span>
+  </div>
+  <div class="cards">
+    <div class="card p-ai" onclick="sendPrompt('How are deep learning surrogate models trained on hydrodynamic simulation outputs to enable real-time flood forecasting — what are the data requirements and accuracy limits?')">
+      <div class="card-top">
+        <span class="card-ref">Löwe et al. (2021) / Zhu et al. (2021) — Surrogate flood models</span>
+        <span class="card-tag t-ai">Surrogate Models</span>
+      </div>
+      <div class="card-desc">Recent work on training deep learning models (CNN, LSTM, U-Net) directly on 2D hydrodynamic model outputs to produce real-time flood inundation maps. Demonstrates speed-ups of 100–1000× over numerical solvers with acceptable accuracy.</div>
+      <div class="card-why">This is the methodological gap where SPH-generated training data + AI surrogate model is most publishable. Currently almost no work uses SPH specifically as the training data source.</div>
+    </div>
+    <div class="card p-cch" onclick="sendPrompt('What is the current state of compound flood modeling in data-scarce mountain river systems in South and Southeast Asia?')">
+      <div class="card-top">
+        <span class="card-ref">AghaKouchak et al. (2020) — Annual Review of Earth &amp; Planetary Sciences</span>
+        <span class="card-tag t-cch">Climate Extremes</span>
+      </div>
+      <div class="card-desc">Comprehensive review of climate extremes and compound hazards in a warming world. Covers methodological challenges of data scarcity, non-stationarity, and the gap between scientific understanding and engineering practice in developing country contexts.</div>
+      <div class="card-why">Sets up the research gap argument for your study — particularly strong for a Nepal/South Asia framing where data scarcity is a real constraint.</div>
+    </div>
+    <div class="card p-sph" onclick="sendPrompt('What are the latest developments in SPH for large-scale flood simulation — including coupling with 2D shallow water models and machine learning?')">
+      <div class="card-top">
+        <span class="card-ref">Domínguez et al. (2022) — Computer Physics Communications</span>
+        <span class="card-tag t-sph">DualSPHysics v5</span>
+      </div>
+      <div class="card-desc">DualSPHysics v5.0 release paper. Documents new features including multi-phase flows, improved boundary conditions, coupling with external solvers, and enhanced GPU performance. The current state of the art for the platform you are using.</div>
+      <div class="card-why">Read this alongside your DualSPHysics installation — it documents v5 capabilities that older tutorials don't cover.</div>
+    </div>
+    <div class="card p-ai" onclick="sendPrompt('How has Google\'s flood forecasting initiative applied deep learning to real-time early warning at global scale — what are the lessons for data-scarce regions?')">
+      <div class="card-top">
+        <span class="card-ref">Nevo et al. (2022) — Nature</span>
+        <span class="card-tag t-ai">Operational AI</span>
+      </div>
+      <div class="card-desc">Documents Google's global flood forecasting system, which uses deep learning to issue operational flood alerts across 80+ countries including South Asia. Discusses transfer learning, data scarcity, and real-world deployment challenges.</div>
+      <div class="card-why">The gold standard for what AI flood prediction looks like in operational practice. Grounding for any research aimed at real-world impact.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:#e05a5a"></div>Compound cascading hazards</div>
+  <div class="leg"><div class="leg-dot" style="background:#5a8fe0"></div>SPH / DualSPHysics</div>
+  <div class="leg"><div class="leg-dot" style="background:#2ab596"></div>AI / deep learning</div>
+  <div class="leg"><div class="leg-dot" style="background:#e0a030"></div>Statistics / copulas</div>
+</div>
+</body>
+</html>

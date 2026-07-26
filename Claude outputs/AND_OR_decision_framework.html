@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,sans-serif;padding:16px;background:transparent;color:var(--color-text-primary,#1a1a1a);font-size:12px}
+  h3{font-size:14px;font-weight:700;margin-bottom:3px}
+  .sub{font-size:11px;opacity:.55;margin-bottom:14px}
+  .question-block{background:var(--color-background-secondary,#f5f5f5);border-radius:10px;padding:14px;margin-bottom:10px}
+  .q-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.45;margin-bottom:5px}
+  .q-text{font-size:13px;font-weight:600;margin-bottom:10px}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{font-size:11px;padding:6px 14px;border-radius:7px;border:1.5px solid transparent;cursor:pointer;font-weight:500;transition:all .15s}
+  .btn:hover{opacity:.8}
+  .btn-yes{background:#e05a5a18;border-color:#e05a5a66;color:#c03030}
+  .btn-no{background:#3B8BD418;border-color:#3B8BD466;color:#1a50a0}
+  .btn-maybe{background:#e0a03018;border-color:#e0a03066;color:#a06010}
+  .result{border-radius:10px;padding:14px;margin-top:10px;display:none}
+  .result.active{display:block}
+  .result-AND{background:#5a8fe018;border-left:4px solid #5a8fe0}
+  .result-OR{background:#e05a5a18;border-left:4px solid #e05a5a}
+  .result-KENDALL{background:#e0a03018;border-left:4px solid #e0a030}
+  .result-title{font-size:13px;font-weight:700;margin-bottom:4px}
+  .result-sub{font-size:11px;opacity:.65;line-height:1.6;margin-bottom:8px}
+  .example-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+  .example-item{font-size:11px;padding:6px 10px;border-radius:6px;background:rgba(0,0,0,.04);line-height:1.5;cursor:pointer;transition:background .12s}
+  .example-item:hover{background:rgba(0,0,0,.08)}
+  .ex-title{font-weight:600}
+  .ex-reason{opacity:.65}
+  .tag{display:inline-block;font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+  .tag-and{background:#5a8fe022;color:#1a50a0}
+  .tag-or{background:#e05a5a22;color:#c03030}
+  .tag-kendall{background:#e0a03022;color:#a06010}
+  .divider{height:1px;background:rgba(128,128,128,.12);margin:14px 0}
+  .matrix{width:100%;border-collapse:collapse;margin-top:10px;font-size:11px}
+  .matrix th{padding:7px 10px;text-align:left;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.05em;opacity:.55;border-bottom:1px solid rgba(128,128,128,.15)}
+  .matrix td{padding:7px 10px;border-bottom:1px solid rgba(128,128,128,.08);vertical-align:top;line-height:1.5}
+  .matrix tr:last-child td{border-bottom:none}
+  .matrix tr:hover td{background:rgba(128,128,128,.04)}
+</style>
+</head>
+<body>
+<h3>Return period selection — failure mode decision tool</h3>
+<p class="sub">Answer the questions below to identify which return period definition is physically correct for your design scenario. Click any example to explore further.</p>
+
+<div class="question-block">
+  <div class="q-label">Step 1 — Storage effect</div>
+  <div class="q-text">Does the structure involve significant storage that routes or attenuates the flood hydrograph before the failure-critical variable is reached?</div>
+  <div class="btn-row">
+    <button class="btn btn-yes" onclick="select('storage','yes')">Yes — reservoir, detention basin</button>
+    <button class="btn btn-no" onclick="select('storage','no')">No — direct-flow structure</button>
+  </div>
+</div>
+
+<div class="question-block" id="q2" style="opacity:.4;pointer-events:none">
+  <div class="q-label">Step 2 — Single-variable failure</div>
+  <div class="q-text">Can the structure fail if only ONE hazard variable is extreme while the other is near-normal?</div>
+  <div class="btn-row">
+    <button class="btn btn-yes" onclick="select('single','yes')">Yes — single variable can govern</button>
+    <button class="btn btn-no" onclick="select('single','no')">No — both must be extreme together</button>
+    <button class="btn btn-maybe" onclick="select('single','maybe')">Depends on combination</button>
+  </div>
+</div>
+
+<div class="question-block" id="q3" style="opacity:.4;pointer-events:none">
+  <div class="q-label">Step 3 — Failure response</div>
+  <div class="q-text">Is the failure response (e.g. max water level, max force) a continuous function of multiple input variables whose joint distribution governs?</div>
+  <div class="btn-row">
+    <button class="btn btn-yes" onclick="select('response','yes')">Yes — response integrates multiple drivers</button>
+    <button class="btn btn-no" onclick="select('response','no')">No — discrete threshold on one variable</button>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="result result-AND" id="res-AND">
+  <div class="result-title">✓ AND return period — physically justified</div>
+  <div class="result-sub">Failure requires simultaneous exceedance of multiple thresholds. Using OR would be over-conservative; using univariate would miss the joint nature entirely. The AND period gives the correct average inter-arrival time between events where all critical variables co-exceed their thresholds.</div>
+  <div class="example-list">
+    <div class="example-item" onclick="sendPrompt('How do I compute the AND return period for flood peak and volume for a large reservoir spillway design using a Gumbel copula in R?')">
+      <span class="tag tag-and">AND</span><span class="ex-title">Large-storage reservoir spillway</span><br>
+      <span class="ex-reason">Overtopping requires both high peak AND large volume — storage attenuates peak-only events</span>
+    </div>
+    <div class="example-item" onclick="sendPrompt('How is wave height and wave period jointly modelled with copulas for coastal breakwater design?')">
+      <span class="tag tag-and">AND</span><span class="ex-title">Coastal breakwater / seawall</span><br>
+      <span class="ex-reason">Run-up and overtopping require both wave height AND wave period above critical thresholds</span>
+    </div>
+    <div class="example-item" onclick="sendPrompt('How does earthquake plus antecedent rainfall jointly affect adobe masonry failure — what is the copula-based return period approach?')">
+      <span class="tag tag-and">AND</span><span class="ex-title">Masonry/earthen structure — seismic + moisture</span><br>
+      <span class="ex-reason">Seismic failure probability elevated only when both earthquake intensity AND material degradation from prior rain are simultaneously critical</span>
+    </div>
+    <div class="example-item" onclick="sendPrompt('How do I use a bivariate AND return period for water supply reservoir failure under simultaneous drought and demand peak?')">
+      <span class="tag tag-and">AND</span><span class="ex-title">Water supply reservoir — drought + demand</span><br>
+      <span class="ex-reason">Supply failure requires both low inflow AND high demand to coincide — either alone is manageable</span>
+    </div>
+  </div>
+</div>
+
+<div class="result result-OR" id="res-OR">
+  <div class="result-title">✓ OR return period — physically correct for most flood structures</div>
+  <div class="result-sub">Failure can be triggered by ANY of the hazard variables exceeding its threshold. The OR period is shorter than AND, reflecting the higher effective risk. This is the correct framing for most levees, floodwalls, bridge piers, and drainage infrastructure — where overtopping or scour can occur from any one critical variable alone.</div>
+  <div class="example-list">
+    <div class="example-item" onclick="sendPrompt('Why is the OR return period the correct choice for levee and embankment design — how much shorter is T_OR compared to T_AND in practice for a correlated peak-volume pair?')">
+      <span class="tag tag-or">OR</span><span class="ex-title">River levee / flood embankment</span><br>
+      <span class="ex-reason">Overtopping occurs if discharge exceeds capacity regardless of volume — single-variable failure governs</span>
+    </div>
+    <div class="example-item" onclick="sendPrompt('How should I specify the joint return period for a bridge pier scour design — is OR or AND the correct framing?')">
+      <span class="tag tag-or">OR</span><span class="ex-title">Bridge pier scour</span><br>
+      <span class="ex-reason">Scour depth is primarily governed by peak velocity — failure can occur from peak discharge alone without joint volume</span>
+    </div>
+    <div class="example-item" onclick="sendPrompt('How is the OR return period used to quantify compound coastal flooding risk from surge plus rainfall at a drainage outfall?')">
+      <span class="tag tag-or">OR</span><span class="ex-title">Coastal drainage outfall — surge + rainfall</span><br>
+      <span class="ex-reason">Outfall blockage or backwater occurs if surge alone is sufficient — rainfall compound makes it worse but failure is not conditional on both</span>
+    </div>
+  </div>
+</div>
+
+<div class="result result-KENDALL" id="res-KENDALL">
+  <div class="result-title">✓ Kendall return period — use when response is a continuous function of multiple drivers</div>
+  <div class="result-sub">The response variable (e.g. maximum reservoir water level after routing) is a smooth function of multiple input variables with no single-variable threshold governing. The Kendall period partitions the joint probability space into a unique safe/dangerous region via copula level curves — most appropriate for dam safety and spillway design where the failure response integrates peak, volume, and duration jointly.</div>
+  <div class="example-list">
+    <div class="example-item" onclick="sendPrompt('How is the Kendall return period computed and applied to dam safety analysis — what is the Kendall distribution function and how does routing affect the result?')">
+      <span class="tag tag-kendall">KENDALL</span><span class="ex-title">Dam safety — routed water level</span><br>
+      <span class="ex-reason">Maximum pool elevation after routing is a joint function of peak, volume, and duration — Kendall gives a unique critical level curve</span>
+    </div>
+    <div class="example-item" onclick="sendPrompt('How can Kendall return period be used in GLOF risk assessment for a moraine-dammed lake — what variables are included in the joint distribution?')">
+      <span class="tag tag-kendall">KENDALL</span><span class="ex-title">GLOF moraine dam — lake volume + outflow peak</span><br>
+      <span class="ex-reason">Breach and downstream flood severity depend jointly on accumulated lake volume, peak outflow, and downstream channel geometry</span>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div style="font-size:12px;font-weight:600;margin-bottom:8px">Quick reference matrix — failure mode → return period</div>
+<table class="matrix">
+  <thead>
+    <tr>
+      <th>Structure type</th>
+      <th>Variable pair</th>
+      <th>Failure condition</th>
+      <th>Correct RP</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Large-storage dam spillway</td>
+      <td>Peak Q + Volume V</td>
+      <td>Routed pool elevation exceeds crest — both govern</td>
+      <td><span class="tag tag-and">AND</span> or <span class="tag tag-kendall">KENDALL</span></td>
+    </tr>
+    <tr>
+      <td>Run-of-river weir / small dam</td>
+      <td>Peak Q + Volume V</td>
+      <td>Overtopping governed by peak alone — minimal storage</td>
+      <td><span class="tag tag-or">OR</span> → univariate</td>
+    </tr>
+    <tr>
+      <td>River levee / floodwall</td>
+      <td>Peak Q + surge backwater</td>
+      <td>Either can overtop independently</td>
+      <td><span class="tag tag-or">OR</span></td>
+    </tr>
+    <tr>
+      <td>Bridge pier / abutment</td>
+      <td>Peak Q + sediment load</td>
+      <td>Scour from peak Q alone can cause failure</td>
+      <td><span class="tag tag-or">OR</span></td>
+    </tr>
+    <tr>
+      <td>Coastal breakwater</td>
+      <td>Wave height H + period T</td>
+      <td>Run-up requires both H and T above threshold</td>
+      <td><span class="tag tag-and">AND</span></td>
+    </tr>
+    <tr>
+      <td>Water supply reservoir</td>
+      <td>Inflow deficit + demand</td>
+      <td>Failure only if both drought and demand peak coincide</td>
+      <td><span class="tag tag-and">AND</span></td>
+    </tr>
+    <tr>
+      <td>Earthen dam — seismic zone</td>
+      <td>PGA + antecedent saturation</td>
+      <td>Liquefaction requires both seismic intensity AND saturation</td>
+      <td><span class="tag tag-and">AND</span></td>
+    </tr>
+    <tr>
+      <td>Urban stormwater network</td>
+      <td>Rainfall intensity + duration</td>
+      <td>Pipe surcharge from either high intensity OR long duration</td>
+      <td><span class="tag tag-or">OR</span></td>
+    </tr>
+    <tr>
+      <td>GLOF retention structure</td>
+      <td>Lake volume + outflow peak</td>
+      <td>Downstream hazard is a joint function of both</td>
+      <td><span class="tag tag-kendall">KENDALL</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+const state={storage:null,single:null,response:null};
+function select(q,v){
+  state[q]=v;
+  if(q==='storage'){
+    document.getElementById('q2').style.opacity='1';
+    document.getElementById('q2').style.pointerEvents='auto';
+    hideResults();
+  }
+  if(q==='single'){
+    if(v==='no'||v==='maybe'){
+      document.getElementById('q3').style.opacity='1';
+      document.getElementById('q3').style.pointerEvents='auto';
+    } else {
+      // single variable can govern -> OR
+      showResult('OR');
+    }
+  }
+  if(q==='response'){
+    if(v==='yes') showResult('KENDALL');
+    else showResult('AND');
+  }
+}
+function hideResults(){
+  ['AND','OR','KENDALL'].forEach(r=>document.getElementById('res-'+r).classList.remove('active'));
+}
+function showResult(type){
+  hideResults();
+  document.getElementById('res-'+type).classList.add('active');
+  document.getElementById('res-'+type).scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+</script>
+</body>
+</html>

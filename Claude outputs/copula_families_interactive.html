@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,sans-serif;padding:16px;background:transparent;color:var(--color-text-primary,#1a1a1a);font-size:13px}
+  h3{font-size:13px;font-weight:600;margin-bottom:2px}
+  .subtitle{font-size:11px;opacity:.55;margin-bottom:12px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .panel{background:var(--color-background-secondary,#f5f5f5);border-radius:10px;padding:10px;cursor:pointer;transition:transform .15s,box-shadow .15s}
+  .panel:hover{transform:translateY(-2px);box-shadow:0 4px 16px #00000015}
+  .panel-title{font-size:12px;font-weight:600;margin-bottom:2px}
+  .panel-sub{font-size:10px;opacity:.55;margin-bottom:6px}
+  canvas{width:100%;border-radius:6px;display:block}
+  .tag{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+  .tag-upper{background:#e05a5a22;color:#c03030}
+  .tag-lower{background:#2ab59622;color:#186a50}
+  .tag-sym{background:#5a8fe022;color:#1a50a0}
+  .tag-none{background:#88888822;color:#555}
+  .desc{font-size:10px;line-height:1.5;opacity:.65;margin-top:5px}
+  .ctrl{display:flex;align-items:center;gap:8px;margin:10px 0;font-size:11px;opacity:.7}
+  .ctrl input{flex:1}
+  @media(max-width:500px){.grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<h3>Copula families — dependence structure comparison</h3>
+<p class="subtitle">Each scatter plot shows 600 samples from U = F(X), V = G(Y) ∈ [0,1]². Point clusters near (1,1) = both variables simultaneously extreme.</p>
+<div class="ctrl">
+  <label>Dependence strength (θ / τ):</label>
+  <input type="range" id="depStr" min="0.1" max="0.9" step="0.1" value="0.5">
+  <span id="depVal">τ = 0.50</span>
+</div>
+<div class="grid" id="panels"></div>
+<script>
+// Gaussian inverse CDF
+function normInv(p){
+  if(p<=0)return-6;if(p>=1)return 6;
+  const a=[-3.969683028665376e1,2.209460984245205e2,-2.759285104469687e2,1.383577518672690e2,-3.066479806614716e1,2.506628277459239];
+  const b=[-5.447609879822406e1,1.615858368580409e2,-1.556989798598866e2,6.680131188771972e1,-1.328068155288572e1];
+  const c=[-7.784894002430293e-3,-3.223964580411365e-1,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783];
+  const d=[7.784695709041462e-3,3.224671290700398e-1,2.445134137142996,3.754408661907416];
+  const plo=0.02425,phi=1-plo;let q,r;
+  if(p<plo){q=Math.sqrt(-2*Math.log(p));return(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/(((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1));}
+  if(p<=phi){q=p-.5;r=q*q;return(((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);}
+  q=Math.sqrt(-2*Math.log(1-p));return-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/(((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1));
+}
+function normCDF(x){const t=1/(1+.2316419*Math.abs(x));const y=1-.3989423*Math.exp(-.5*x*x)*t*(.3193815+t*(-.3565638+t*(1.7814779+t*(-1.8212560+t*1.3302744))));return x>=0?y:1-y;}
+
+// Kendall tau to copula parameter
+function tauToGumbel(tau){return 1/(1-tau);}    // theta >= 1
+function tauToClayton(tau){return 2*tau/(1-tau);} // theta > 0
+function tauToFrank(tau){
+  // solve tau = 1 - 4/theta*(1 - D1(theta)) numerically via Newton — approximate
+  if(tau<0.01)return 0.1;
+  return tau*Math.PI/0.5; // rough linear approx for display
+}
+
+// Sampling algorithms
+function sampleGaussian(n, rho){
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const u1=Math.random(),u2=Math.random();
+    const z1=normInv(u1), z2=normInv(u2);
+    const x=z1, y=rho*z1+Math.sqrt(1-rho*rho)*z2;
+    pts.push([normCDF(x),normCDF(y)]);
+  }
+  return pts;
+}
+function sampleGumbel(n, theta){
+  // Stable simulation via Marshall-Olkin for Archimedean
+  const pts=[];
+  for(let i=0;i<n;i++){
+    // Frailty approach: V ~ Stable(1/theta), then U_j = exp(-E_j/V^(1/theta))
+    const v = stableAlpha(1/theta);
+    const e1=-Math.log(Math.max(1e-10,Math.random()));
+    const e2=-Math.log(Math.max(1e-10,Math.random()));
+    const u=Math.exp(-Math.pow(e1/v,1/theta));
+    const vv=Math.exp(-Math.pow(e2/v,1/theta));
+    pts.push([Math.max(1e-6,Math.min(1-1e-6,u)),Math.max(1e-6,Math.min(1-1e-6,vv))]);
+  }
+  return pts;
+}
+function stableAlpha(alpha){
+  // Chambers-Mallows-Stuck for S(alpha,1,0,0)
+  if(alpha>=1)return 1;
+  const u=(Math.random()-.5)*Math.PI;
+  const e=-Math.log(Math.max(1e-10,Math.random()));
+  const t=Math.sin(alpha*u)/Math.pow(Math.cos(u),1/alpha);
+  return t*Math.pow(Math.cos((1-alpha)*u)/e,(1-alpha)/alpha);
+}
+function sampleClayton(n, theta){
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const u=Math.random();
+    const t=Math.random(); // uniform for conditional
+    // Conditional inverse: C(v|u) = t -> v = ((t^(-theta/(1+theta))-1)*u^(-theta)+1)^(-1/theta)
+    const v=Math.pow(Math.max(1e-12,Math.pow(t,-theta/(1+theta))-1)*Math.pow(u,-theta)+1,-1/theta);
+    pts.push([Math.max(1e-6,Math.min(1-1e-6,u)),Math.max(1e-6,Math.min(1-1e-6,v))]);
+  }
+  return pts;
+}
+function sampleFrank(n, theta){
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const u=Math.random();
+    const t=Math.random();
+    const a=Math.exp(-theta);
+    const au=Math.exp(-theta*u);
+    const v=-1/theta*Math.log(1+(t*(1-a))/((1-a)-t*(1-au)+(1-a)));
+    pts.push([Math.max(1e-6,Math.min(1-1e-6,u)),Math.max(1e-6,Math.min(1-1e-6,v))]);
+  }
+  return pts;
+}
+function sampleStudentT(n, rho, nu=4){
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const u1=Math.random(),u2=Math.random();
+    const z1=normInv(u1),z2=normInv(u2);
+    const x=z1, y=rho*z1+Math.sqrt(1-rho*rho)*z2;
+    // chi2 with nu df
+    let chi2=0;for(let j=0;j<nu;j++){const z=normInv(Math.random());chi2+=z*z;}
+    const s=Math.sqrt(nu/chi2);
+    // t CDF (approx via normal for display)
+    const tx=x*s,ty=y*s;
+    pts.push([normCDF(tx/Math.sqrt(1+tx*tx/nu)),normCDF(ty/Math.sqrt(1+ty*ty/nu))]);
+  }
+  return pts;
+}
+
+const N=600;
+const configs=[
+  {id:'gaussian',title:'Gaussian copula',sub:'Elliptical family',tag:'sym',tagLabel:'Symmetric tails',
+   color:'#5a8fe0',desc:'Dependence equal at both tails. Cannot capture upper or lower tail dependence. Equivalent to assuming bivariate normality — convenient but underestimates joint extreme probability.',
+   prompt:'Why does the Gaussian copula underestimate extreme flood co-occurrence probability compared to Archimedean copulas?'},
+  {id:'gumbel',title:'Gumbel copula',sub:'Archimedean — upper tail',tag:'upper',tagLabel:'Upper tail dependence',
+   color:'#e05a5a',desc:'Strong upper tail dependence — both variables are most correlated when simultaneously extreme. Best for flood peak + volume, surge + rainfall. The standard for compound flood analysis.',
+   prompt:'How do I fit a Gumbel copula to concurrent flood peak and volume data in R — what is the method of moments approach using Kendall tau?'},
+  {id:'clayton',title:'Clayton copula',sub:'Archimedean — lower tail',tag:'lower',tagLabel:'Lower tail dependence',
+   color:'#2ab596',desc:'Lower tail dependence — variables co-vary more in low ranges. Less common for flood extremes but relevant for drought co-occurrence or low-flow analysis across tributaries.',
+   prompt:'When is Clayton copula preferred over Gumbel copula in hydrological analysis — what physical scenarios justify lower tail dependence?'},
+  {id:'frank',title:'Frank copula',sub:'Archimedean — symmetric',tag:'none',tagLabel:'No tail dependence',
+   color:'#e0a030',desc:'Symmetric, no tail dependence. Can handle negative dependence (unlike Gumbel/Clayton). Useful as a baseline comparison or where extremes are not the focus. Often used for rainfall intensity-duration.',
+   prompt:'What are the properties of the Frank copula and when is it used in compound hazard frequency analysis?'},
+  {id:'student',title:'Student-t copula',sub:'Elliptical family',tag:'upper',tagLabel:'Symmetric tail dependence',
+   color:'#a060d0',desc:'Symmetric upper AND lower tail dependence — controlled by degrees of freedom ν. More flexible than Gaussian. Useful for flood peak-duration pairs where tail behaviour is less asymmetric.',
+   prompt:'How does the Student-t copula differ from the Gaussian copula for flood frequency analysis and when should I use each?'},
+  {id:'independence',title:'Independence copula',sub:'Reference case',tag:'none',tagLabel:'No dependence',
+   color:'#888888',desc:'C(u,v) = u·v — the baseline of perfect independence. Joint return period equals the product of univariate return periods. Traditional design standard implicitly assumes this — shown here to illustrate the error.',
+   prompt:'What is the error in assuming flood peak and volume are independent random variables in design flood estimation?'}
+];
+
+function drawPanel(cfg, tau){
+  const el=document.getElementById('c_'+cfg.id);
+  if(!el)return;
+  const ctx=el.getContext('2d');
+  const W=el.width,H=el.height;
+  ctx.clearRect(0,0,W,H);
+  const pad=18;
+
+  // Generate samples
+  let pts;
+  const rho=Math.sin(Math.PI/2*tau); // tau to rho for elliptical
+  if(cfg.id==='gaussian') pts=sampleGaussian(N,rho);
+  else if(cfg.id==='gumbel'){const th=Math.max(1.01,tauToGumbel(tau));pts=sampleGumbel(N,th);}
+  else if(cfg.id==='clayton'){const th=Math.max(0.05,tauToClayton(tau));pts=sampleClayton(N,th);}
+  else if(cfg.id==='frank'){const th=Math.max(0.1,tauToFrank(tau)*6);pts=sampleFrank(N,Math.min(th,30));}
+  else if(cfg.id==='student') pts=sampleStudentT(N,rho);
+  else pts=Array.from({length:N},()=>[Math.random(),Math.random()]);
+
+  // Background
+  const bg=getComputedStyle(document.body).getPropertyValue('--color-background-primary')||'#ffffff';
+  ctx.fillStyle=bg+'22'; ctx.fillRect(0,0,W,H);
+
+  // Extreme region highlight (upper-right quadrant >0.8)
+  ctx.fillStyle=cfg.color+'12';
+  ctx.fillRect(pad+(0.8)*(W-2*pad),pad,(W-2*pad)*0.2,(H-2*pad)*0.8);
+  ctx.fillRect(pad,pad,(W-2*pad),0.2*(H-2*pad)*0);
+
+  // Draw points
+  for(const [u,v] of pts){
+    const px=pad+u*(W-2*pad);
+    const py=H-pad-v*(H-2*pad);
+    const extreme=u>0.85&&v>0.85;
+    ctx.beginPath();
+    ctx.arc(px,py,extreme?3:1.8,0,2*Math.PI);
+    ctx.fillStyle=extreme?cfg.color+'ee':cfg.color+'55';
+    ctx.fill();
+  }
+
+  // Upper-right corner marker
+  ctx.strokeStyle=cfg.color+'55'; ctx.lineWidth=0.8; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(pad+0.8*(W-2*pad),pad); ctx.lineTo(pad+0.8*(W-2*pad),H-pad); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad,H-pad-0.8*(H-2*pad)); ctx.lineTo(W-pad,H-pad-0.8*(H-2*pad)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Axis labels
+  ctx.fillStyle='rgba(128,128,128,0.6)'; ctx.font='9px system-ui';
+  ctx.textAlign='center'; ctx.fillText('U = F(X)',W/2,H-2);
+  ctx.save(); ctx.translate(8,H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('V = G(Y)',0,0); ctx.restore();
+
+  // Count extreme points
+  const nEx=pts.filter(([u,v])=>u>0.85&&v>0.85).length;
+  ctx.fillStyle=cfg.color; ctx.font='bold 9px system-ui'; ctx.textAlign='right';
+  ctx.fillText(`${nEx} extreme`,W-pad-2,pad+10);
+}
+
+function buildPanels(){
+  const container=document.getElementById('panels');
+  container.innerHTML='';
+  configs.forEach(cfg=>{
+    const div=document.createElement('div');
+    div.className='panel';
+    div.onclick=()=>sendPrompt(cfg.prompt);
+    div.innerHTML=`
+      <div class="panel-title">${cfg.title}</div>
+      <div class="panel-sub">${cfg.sub}</div>
+      <span class="tag tag-${cfg.tag}">${cfg.tagLabel}</span>
+      <canvas id="c_${cfg.id}" width="180" height="140"></canvas>
+      <div class="desc">${cfg.desc}</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function redrawAll(){
+  const tau=parseFloat(document.getElementById('depStr').value);
+  document.getElementById('depVal').textContent=`τ = ${tau.toFixed(2)}`;
+  configs.forEach(cfg=>drawPanel(cfg,tau));
+}
+
+document.getElementById('depStr').addEventListener('input',redrawAll);
+buildPanels();
+setTimeout(redrawAll,50);
+</script>
+</body>
+</html>

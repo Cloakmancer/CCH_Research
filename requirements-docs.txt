@@ -1,0 +1,8 @@
+# Documentation site only — not the research environment.
+# Install with:  pip install -r requirements-docs.txt
+#
+# Upper bounds are deliberate. MkDocs 2.0 removes the plugin system and rewrites
+# theming with no migration path, which would break this site without warning on
+# a future CI run. Bump these consciously, not accidentally.
+mkdocs>=1.6,<2.0
+mkdocs-material>=9.5,<10.0

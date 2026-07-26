@@ -1,0 +1,33 @@
+/* Notes contain wide comparison tables (copula families, method comparison).
+   Let them scroll rather than squash on a phone. */
+.md-typeset table:not([class]) {
+  display: block;
+  overflow-x: auto;
+  white-space: normal;
+}
+
+/* Equations are written as indented plain-text blocks with unicode symbols.
+   Keep them monospaced and readable, and stop long ones wrapping mid-formula. */
+.md-typeset pre > code {
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+/* Blockquotes are used for the inline answers to pre-questions — make them
+   visually distinct from ordinary quoted material. */
+.md-typeset blockquote {
+  border-left: 4px solid var(--md-accent-fg-color);
+  color: var(--md-default-fg-color);
+}
+
+/* Slightly wider content column; these are long-form reading pages. */
+@media screen and (min-width: 76.25em) {
+  .md-main__inner {
+    max-width: 68rem;
+  }
+}
+
+/* Comfortable reading measure on mobile. */
+.md-typeset {
+  font-size: 0.76rem;
+}

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,sans-serif;padding:16px;background:transparent;color:var(--color-text-primary,#1a1a1a);font-size:12px;line-height:1.5}
+  h3{font-size:14px;font-weight:700;margin-bottom:3px}
+  .sub{font-size:11px;opacity:.5;margin-bottom:14px}
+
+  /* Phase tabs */
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .tab{font-size:11px;font-weight:600;padding:5px 14px;border-radius:20px;cursor:pointer;border:1.5px solid transparent;transition:all .15s;opacity:.55}
+  .tab.active{opacity:1}
+  .tab-1{border-color:#5a8fe0;color:#1a50a0}
+  .tab-1.active{background:#5a8fe018}
+  .tab-2{border-color:#e0a030;color:#a06010}
+  .tab-2.active{background:#e0a03018}
+  .tab-3{border-color:#e05a5a;color:#c03030}
+  .tab-3.active{background:#e05a5a18}
+  .tab-4{border-color:#2ab596;color:#186a50}
+  .tab-4.active{background:#2ab59618}
+
+  /* Phase content */
+  .phase{display:none}
+  .phase.active{display:block}
+
+  /* Week rows */
+  .week{display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;margin-bottom:8px;align-items:start}
+  .week-label{font-size:11px;font-weight:700;padding:6px 8px;border-radius:6px;text-align:center;color:white}
+  .cell{border-radius:8px;padding:9px 11px;min-height:60px}
+  .cell-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.5;margin-bottom:3px}
+  .cell-body{font-size:11px;line-height:1.55}
+  .cell-body b{font-weight:600;font-size:11px}
+  .cell-tag{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;margin-top:4px;text-transform:uppercase;letter-spacing:.04em}
+
+  /* Column colours */
+  .col-read{background:#5a8fe012;border:1px solid #5a8fe022}
+  .col-tool{background:#2ab59612;border:1px solid #2ab59622}
+  .col-output{background:#e0a03012;border:1px solid #e0a03022}
+
+  /* Week label colours per phase */
+  .ph1 .week-label{background:#5a8fe0}
+  .ph2 .week-label{background:#e0a030}
+  .ph3 .week-label{background:#e05a5a}
+  .ph4 .week-label{background:#2ab596}
+
+  /* Column headers */
+  .col-headers{display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;margin-bottom:6px}
+  .col-h{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.4;padding:0 11px}
+
+  /* Tags */
+  .tag-read{background:#5a8fe022;color:#1a50a0}
+  .tag-tool{background:#2ab59622;color:#186a50}
+  .tag-output{background:#e0a03022;color:#a06010}
+
+  /* Phase banner */
+  .phase-banner{border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;line-height:1.6}
+  .ph1 .phase-banner{background:#5a8fe012;border-left:3px solid #5a8fe0}
+  .ph2 .phase-banner{background:#e0a03012;border-left:3px solid #e0a030}
+  .ph3 .phase-banner{background:#e05a5a12;border-left:3px solid #e05a5a}
+  .ph4 .phase-banner{background:#2ab59612;border-left:3px solid #2ab596}
+  .phase-banner b{font-size:13px}
+
+  /* Milestone */
+  .milestone{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.04);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:11px;cursor:pointer;transition:background .12s}
+  .milestone:hover{background:rgba(0,0,0,.08)}
+  .ms-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .ms-text b{font-weight:600;display:block}
+  .ms-text span{opacity:.6}
+
+  @media(max-width:540px){
+    .week{grid-template-columns:60px 1fr;grid-template-rows:auto auto auto}
+    .col-headers{display:none}
+    .week-label{grid-row:1;grid-column:1}
+    .col-read{grid-column:2}
+    .col-tool{grid-column:1/3}
+    .col-output{grid-column:1/3}
+  }
+</style>
+</head>
+<body>
+<h3>Study workflow — CCH · SPH · AI flood prediction</h3>
+<p class="sub">Four phases, each ~4 weeks. Click phase tabs to navigate. Click milestones to prompt deeper guidance.</p>
+
+<div class="tabs">
+  <div class="tab tab-1 active" onclick="showPhase(1)">Phase 1 · Foundations</div>
+  <div class="tab tab-2" onclick="showPhase(2)">Phase 2 · Core Methods</div>
+  <div class="tab tab-3" onclick="showPhase(3)">Phase 3 · Integration</div>
+  <div class="tab tab-4" onclick="showPhase(4)">Phase 4 · Research</div>
+</div>
+
+<!-- PHASE 1 -->
+<div class="phase ph1 active" id="ph1">
+  <div class="phase-banner">
+    <b>Phase 1 — Foundations (Weeks 1–4)</b><br>
+    Goal: get something working in each of the three tools before going deep in any of them. The first simulation result you produce is worth ten papers you read. Keep reading short and applied.
+  </div>
+  <div class="col-headers">
+    <div class="col-h"></div>
+    <div class="col-h">📄 Read (1–2 hrs)</div>
+    <div class="col-h">🔧 Hands-on (3–4 hrs)</div>
+    <div class="col-h">📦 Output / deliverable</div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Week 1<br>CCH + R</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body"><b>Zscheischler et al. 2020</b> — read Sections 1–3 only (typology). Skip methods. 45 min.<br><br>Skim Nelsen Ch.1–2 (copula definition + Sklar). 30 min.</div>
+      <span class="cell-tag tag-read">CCH</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Hands-on</div>
+      <div class="cell-body">Install R + RStudio. Install <b>copula</b> package.<br>Run the built-in demo: <code>demo("gauss-ex", package="copula")</code><br>Plot a bivariate Gumbel sample. Change θ. Observe the scatter.</div>
+      <span class="cell-tag tag-tool">R / copula</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">A scatter plot of 500 Gumbel copula samples at three θ values. Save as your first result figure. Write 3 sentences on what you observe.</div>
+      <span class="cell-tag tag-output">Figure</span>
+    </div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Week 2<br>SPH</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body"><b>Gómez-Gesteira et al. 2012</b> — Sections 1–3 (intro + governing eqns). 1 hr.<br><br>DualSPHysics User Guide Ch.1–2 (overview + installation). 30 min.</div>
+      <span class="cell-tag tag-read">SPH</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Hands-on</div>
+      <div class="cell-body">Fix the two missing executables in your v5.4.3 install (BathymetryTool, SurfacesSTL).<br>Run <b>Case_DamBreak_2D</b> from the examples folder. Watch it run. Open output in ParaView.</div>
+      <span class="cell-tag tag-tool">DualSPHysics</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">A ParaView screenshot of the 2D dam-break wave at t=0.4s. Note particle count, run time on your GPU.</div>
+      <span class="cell-tag tag-output">Simulation</span>
+    </div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Week 3<br>AI + Python</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body"><b>Kratzert et al. 2018</b> — Abstract + Introduction + Figure 2 only. 30 min.<br><br>Fast.ai practical deep learning Ch.1 (free online). 1 hr.</div>
+      <span class="cell-tag tag-read">AI / LSTM</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Hands-on</div>
+      <div class="cell-body">Install Python + PyTorch. Download a CAMELS-GB or GRDC discharge dataset (or DHM Nepal if available).<br>Build a 2-layer LSTM that predicts next-day discharge from 7-day rainfall. Train for 10 epochs.</div>
+      <span class="cell-tag tag-tool">Python / LSTM</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">A training loss curve + observed vs predicted discharge plot. Even a rough model counts — you now know the full pipeline.</div>
+      <span class="cell-tag tag-output">Model run</span>
+    </div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Week 4<br>Review</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body"><b>Salvadori &amp; De Michele 2004</b> — Sections 1–3 (theory). Now you have context from the R work. 1 hr.</div>
+      <span class="cell-tag tag-read">Copula theory</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Hands-on</div>
+      <div class="cell-body">In R: fit a Gumbel copula to real concurrent flood peak + volume data (use any freely available dataset — US USGS, UK NRFA, or GRDC). Compute T_AND and T_OR.</div>
+      <span class="cell-tag tag-tool">R / copula</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">Return period isoline plot (the Salvadori-style level curve) for your real dataset. Your first publishable-quality figure.</div>
+      <span class="cell-tag tag-output">Analysis</span>
+    </div>
+  </div>
+
+  <div class="milestone" onclick="sendPrompt('Walk me through fixing the DualSPHysics v5.4.3 missing BathymetryTool and SurfacesSTL executables on Windows and running the Case_DamBreak_2D example')">
+    <div class="ms-dot" style="background:#5a8fe0"></div>
+    <div class="ms-text"><b>Phase 1 milestone</b><span>You have run one simulation in each of the three tools. You know what the interface feels like. Now reading has context.</span></div>
+  </div>
+</div>
+
+<!-- PHASE 2 -->
+<div class="phase ph2" id="ph2">
+  <div class="phase-banner">
+    <b>Phase 2 — Core Methods (Weeks 5–10)</b><br>
+    Goal: go deeper in each tool. Read the methodology papers now that you have hands-on intuition. Longer simulation runs, real data, proper model evaluation.
+  </div>
+  <div class="col-headers">
+    <div class="col-h"></div>
+    <div class="col-h">📄 Read (2 hrs)</div>
+    <div class="col-h">🔧 Hands-on (4–5 hrs)</div>
+    <div class="col-h">📦 Output</div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Wk 5–6<br>Copulas deep</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body"><b>Serinaldi &amp; Kilsby 2015</b> — full paper. Read critically. Note every critique that applies to what you built in Week 4.<br><br>Bevacqua et al. 2019 — Methods section.</div>
+      <span class="cell-tag tag-read">Non-stationarity</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Hands-on</div>
+      <div class="cell-body">Fit all four copula families (Gumbel, Clayton, Frank, Gaussian) to your dataset. Use AIC/BIC to select best. Compute tail dependence λ_U. Run Genest-Rivest goodness-of-fit test. Plot Kendall's K_C.</div>
+      <span class="cell-tag tag-tool">R / VineCopula</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">Copula selection table (AIC, BIC, λ_U for each family) + selected copula level curves at T = 10, 50, 100, 200 yr.</div>
+      <span class="cell-tag tag-output">Results table</span>
+    </div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Wk 7–8<br>SPH deep</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body"><b>Crespo et al. 2015</b> (DualSPHysics paper) — Sections 2–4 (numerical scheme, GPU, boundary conditions). Read alongside the User Guide Ch.3–5.</div>
+      <span class="cell-tag tag-read">DualSPHysics</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Hands-on</div>
+      <div class="cell-body">Run <b>Case_DamBreak_3D</b>. Then run <b>Case_Wavemaker</b>. Vary particle spacing dp (0.02 → 0.01m). Compare results. Use MeasureTool to extract water level at two gauge points. Plot time series.</div>
+      <span class="cell-tag tag-tool">DualSPHysics</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">Gauge time-series plots at two locations. Convergence test: how does result change with dp? Note GPU run times.</div>
+      <span class="cell-tag tag-output">Simulation</span>
+    </div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Wk 9–10<br>AI deep</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body"><b>Raissi et al. 2019</b> (PINNs) — Introduction + Section 2. Heavy math — read for intuition, not derivation.<br><br>Löwe et al. 2021 surrogate model paper — Methods.</div>
+      <span class="cell-tag tag-read">PINNs / surrogates</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Hands-on</div>
+      <div class="cell-body">Extend your Week 3 LSTM: add an encoder-decoder architecture. Predict 5-day discharge sequence rather than next-day only. Evaluate NSE, KGE, PBIAS. Try with 2+ catchments to test generalisation.</div>
+      <span class="cell-tag tag-tool">Python / LSTM</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">Multi-catchment performance table (NSE, KGE per basin). Observed vs predicted hydrograph for a validation flood event.</div>
+      <span class="cell-tag tag-output">Model eval</span>
+    </div>
+  </div>
+
+  <div class="milestone" onclick="sendPrompt('How do I run the Genest-Rivest goodness-of-fit test for copula selection in R, and how do I compute the upper tail dependence coefficient lambda_U empirically?')">
+    <div class="ms-dot" style="background:#e0a030"></div>
+    <div class="ms-text"><b>Phase 2 milestone</b><span>You can fit and evaluate copulas on real data, run parameterised SPH simulations and extract engineering quantities, and build and evaluate an LSTM flood model. You are now a practitioner, not just a reader.</span></div>
+  </div>
+</div>
+
+<!-- PHASE 3 -->
+<div class="phase ph3" id="ph3">
+  <div class="phase-banner">
+    <b>Phase 3 — Integration (Weeks 11–16)</b><br>
+    Goal: connect the pillars. Use SPH to generate synthetic flood scenarios. Use those scenarios as input to your AI model. Frame a compound hazard problem using copulas and solve a piece of it with each tool.
+  </div>
+  <div class="col-headers">
+    <div class="col-h"></div>
+    <div class="col-h">📄 Read (1–2 hrs)</div>
+    <div class="col-h">🔧 Hands-on (5–6 hrs)</div>
+    <div class="col-h">📦 Output</div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Wk 11–12<br>SPH → data</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body"><b>Ward et al. 2018</b> — full paper. Note how they handle data scarcity in South Asian systems.<br><br>AghaKouchak et al. 2020 — Section on data-scarce regions.</div>
+      <span class="cell-tag tag-read">Compound flood</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Hands-on</div>
+      <div class="cell-body">Build a custom SPH dam-break scenario with a simple downstream obstacle (a wall or building). Run 5 variants at different initial water heights. Extract peak velocity and inundation depth at the obstacle for each run. You now have a synthetic dataset of (input, output) pairs.</div>
+      <span class="cell-tag tag-tool">DualSPHysics</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">CSV of 5 SPH scenarios: (initial depth, peak velocity, max inundation depth, force on obstacle). This is your surrogate model training dataset — small but real.</div>
+      <span class="cell-tag tag-output">Synthetic dataset</span>
+    </div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Wk 13–14<br>SPH → AI</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body"><b>Domínguez et al. 2022</b> (DualSPHysics v5) — Sections on coupling and post-processing.<br><br>Surrogate model review of your choice (Löwe or Zhu 2021).</div>
+      <span class="cell-tag tag-read">Surrogate models</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Hands-on</div>
+      <div class="cell-body">Train a simple neural network (even a 2-layer MLP in PyTorch) to predict (peak velocity, force on obstacle) from (initial water height, obstacle geometry). Test it on a 6th SPH run you held out. Compare NN prediction vs SPH result.</div>
+      <span class="cell-tag tag-tool">SPH + Python</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">Predicted vs actual scatter plot for your held-out SPH scenario. First working SPH → AI pipeline. Even with 5 training points the principle is demonstrated.</div>
+      <span class="cell-tag tag-output">Surrogate demo</span>
+    </div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Wk 15–16<br>Full CCH frame</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body"><b>Bevacqua et al. 2019</b> — full Methods + Results. This is your compound flood analysis template.<br><br>Sadegh et al. 2018 — MvCAT toolbox paper.</div>
+      <span class="cell-tag tag-read">Compound flood</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Hands-on</div>
+      <div class="cell-body">Choose a Nepal/South Asian case: e.g. Koshi River — concurrent discharge and rainfall data from DHM. Fit marginals, select copula, compute joint return periods. Define one AND and one OR scenario. Write 1-page methods description as if for a paper.</div>
+      <span class="cell-tag tag-tool">R + real Nepal data</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">Joint return period level curves for a Nepali catchment. 1-page methods draft. This is the seed of a publishable methods section.</div>
+      <span class="cell-tag tag-output">Draft section</span>
+    </div>
+  </div>
+
+  <div class="milestone" onclick="sendPrompt('What data sources are available for concurrent discharge and rainfall data on the Koshi River in Nepal suitable for copula-based compound flood analysis?')">
+    <div class="ms-dot" style="background:#e05a5a"></div>
+    <div class="ms-text"><b>Phase 3 milestone</b><span>You have a working end-to-end prototype: SPH generates physics-consistent data, AI learns from it, copulas frame the joint probability. The three pillars are connected. Everything from here is deepening and publishing.</span></div>
+  </div>
+</div>
+
+<!-- PHASE 4 -->
+<div class="phase ph4" id="ph4">
+  <div class="phase-banner">
+    <b>Phase 4 — Research frontier (Weeks 17+)</b><br>
+    Goal: define your original contribution. By now you know enough to identify what has not been done. Pick one gap and push it forward. Reading is now targeted and reactive — you read when a specific question arises during your work.
+  </div>
+  <div class="col-headers">
+    <div class="col-h"></div>
+    <div class="col-h">📄 Read (reactive)</div>
+    <div class="col-h">🔧 Research work</div>
+    <div class="col-h">📦 Output</div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Wk 17–20<br>GLOF focus</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body">GLOF literature: Emmer 2017 review + ICIMOD regional reports. Read only what blocks your current modelling question.</div>
+      <span class="cell-tag tag-read">GLOF / Nepal</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Research</div>
+      <div class="cell-body">Build a DualSPHysics moraine dam-break scenario parameterised from a real Nepali glacial lake (e.g. Imja, Tsho Rolpa). Extract outflow hydrograph. Feed into LSTM for downstream routing. Frame as AND return period problem.</div>
+      <span class="cell-tag tag-tool">SPH + AI + Copula</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">Conference abstract draft. This is your first original contribution: SPH-generated GLOF scenarios + copula joint return period for a specific Nepali lake.</div>
+      <span class="cell-tag tag-output">Abstract / paper seed</span>
+    </div>
+  </div>
+
+  <div class="week">
+    <div class="week-label">Wk 21+<br>Paper</div>
+    <div class="cell col-read">
+      <div class="cell-title">Read</div>
+      <div class="cell-body">Targeted: whatever reviewers of your draft will cite. Use Google Scholar citation alerts on your 5 core papers.</div>
+      <span class="cell-tag tag-read">Targeted</span>
+    </div>
+    <div class="cell col-tool">
+      <div class="cell-title">Research</div>
+      <div class="cell-body">Expand scenario set (run 20–30 SPH simulations across parameter space). Train surrogate on full set. Validate against held-out runs. Write full methods + results sections.</div>
+      <span class="cell-tag tag-tool">Full pipeline</span>
+    </div>
+    <div class="cell col-output">
+      <div class="cell-title">Output</div>
+      <div class="cell-body">Journal paper draft. Natural Hazards and Earth System Sciences (NHESS) is the target venue — open access, strong CCH presence.</div>
+      <span class="cell-tag tag-output">Paper draft</span>
+    </div>
+  </div>
+
+  <div class="milestone" onclick="sendPrompt('What are the key open research gaps in compound flood analysis for Himalayan river systems that would be publishable in Natural Hazards and Earth System Sciences?')">
+    <div class="ms-dot" style="background:#2ab596"></div>
+    <div class="ms-text"><b>Phase 4 milestone</b><span>Original contribution defined, methods pipeline proven, paper draft in progress. You are now a researcher, not a student.</span></div>
+  </div>
+</div>
+
+<script>
+function showPhase(n){
+  for(let i=1;i<=4;i++){
+    document.getElementById('ph'+i).classList.toggle('active',i===n);
+    document.querySelectorAll('.tab')[i-1].classList.toggle('active',i===n);
+  }
+}
+</script>
+</body>
+</html>

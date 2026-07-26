@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CCH / SPH / AI — Interactive Literature Flowchart</title>
+<style>
+  :root {
+    --cch:#e05a5a; --stat:#e0a030; --sph:#5a8fe0; --ai:#2ab596; --goal:#8860d0;
+    --bg:#fbfbfa; --card:#ffffff; --text:#1a1a1a; --muted:#666;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg);
+         color:var(--text); padding:24px; font-size:14px; line-height:1.55; }
+  header { max-width:1080px; margin:0 auto 20px; }
+  h1 { font-size:19px; font-weight:700; margin-bottom:4px; }
+  .sub { font-size:12.5px; color:var(--muted); }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; font-size:11.5px; color:var(--muted); }
+  .legend span { display:flex; align-items:center; gap:5px; }
+  .dot { width:11px; height:11px; border-radius:3px; }
+  .controls { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
+  button.ctl { font:inherit; font-size:12px; padding:5px 12px; border:1px solid #ccc;
+               background:#fff; border-radius:6px; cursor:pointer; }
+  button.ctl:hover { background:#f0f0f0; }
+
+  main { max-width:1080px; margin:0 auto; }
+  .phase { margin-bottom:28px; }
+  .phase-hd { display:flex; align-items:center; gap:10px; margin-bottom:10px;
+              padding-bottom:6px; border-bottom:1px solid #e2e2e0; }
+  .badge { font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+           background:#ececeb; color:#555; padding:3px 9px; border-radius:20px; }
+  .phase-title { font-size:14.5px; font-weight:600; }
+  .phase-note { font-size:12px; color:var(--muted); margin-left:auto; font-style:italic; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:10px; }
+  .node { background:var(--card); border:1px solid #e2e2e0; border-left-width:4px;
+          border-radius:8px; overflow:hidden; transition:box-shadow .15s; }
+  .node:hover { box-shadow:0 2px 10px rgba(0,0,0,.07); }
+  .node.cch { border-left-color:var(--cch); }
+  .node.stat { border-left-color:var(--stat); }
+  .node.sph { border-left-color:var(--sph); }
+  .node.ai { border-left-color:var(--ai); }
+  .node.goal { border-left-color:var(--goal); background:#8860d00a; }
+
+  .node-hd { padding:11px 13px; cursor:pointer; display:flex; gap:9px; align-items:flex-start; }
+  .arrow { flex-shrink:0; font-size:11px; color:var(--muted); margin-top:3px;
+           transition:transform .18s; display:inline-block; }
+  .node.open .arrow { transform:rotate(90deg); }
+  .ttl { font-size:13px; font-weight:600; flex:1; }
+  .ttl small { display:block; font-weight:400; font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .tag { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+         padding:2px 7px; border-radius:20px; white-space:nowrap; flex-shrink:0; margin-top:1px; }
+  .tag.cch{background:#e05a5a22;color:#b83c3c;} .tag.stat{background:#e0a03022;color:#9a6008;}
+  .tag.sph{background:#5a8fe022;color:#2860b0;} .tag.ai{background:#2ab59622;color:#16785f;}
+  .tag.goal{background:#8860d022;color:#6040a0;}
+
+  .body { display:none; padding:0 13px 14px 13px; border-top:1px solid #f0f0ee; }
+  .node.open .body { display:block; }
+  .body h4 { font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+             color:var(--muted); margin:12px 0 4px; font-weight:700; }
+  .body p { font-size:12.8px; margin-bottom:4px; }
+  .body ul { margin:2px 0 4px 17px; font-size:12.8px; }
+  .body li { margin-bottom:3px; }
+  .skip { color:#8a5a5a; }
+  .link { font-size:11.5px; margin-top:9px; }
+  .link a { color:#2860b0; text-decoration:none; }
+  .link a:hover { text-decoration:underline; }
+  .flag { background:#fff6e0; border:1px solid #f0d890; border-radius:5px;
+          padding:6px 9px; font-size:11.8px; margin-top:9px; }
+  .flow { text-align:center; color:#bbb; font-size:17px; margin:-4px 0 8px; }
+  footer { max-width:1080px; margin:26px auto 0; font-size:11.5px; color:var(--muted);
+           border-top:1px solid #e2e2e0; padding-top:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Literature roadmap — CCH, SPH &amp; AI flood prediction</h1>
+  <div class="sub">Click any paper to expand: summary of the work, sections to focus on, and what to skip. Read top to bottom.</div>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--cch)"></i>Compound cascading hazards</span>
+    <span><i class="dot" style="background:var(--stat)"></i>Statistics / copulas</span>
+    <span><i class="dot" style="background:var(--sph)"></i>SPH / DualSPHysics</span>
+    <span><i class="dot" style="background:var(--ai)"></i>AI / deep learning</span>
+    <span><i class="dot" style="background:var(--goal)"></i>Contribution target</span>
+  </div>
+  <div class="controls">
+    <button class="ctl" onclick="setAll(true)">Expand all</button>
+    <button class="ctl" onclick="setAll(false)">Collapse all</button>
+  </div>
+</header>
+
+<main id="root"></main>
+
+<footer>
+  Sources verified July 2026 via publisher records. Section-level focus guidance is tailored to this
+  project's stated contribution: SPH-generated GLOF outflow hydrographs → LSTM downstream routing →
+  copula joint return period framework, applied to a Nepali glacial lake.
+</footer>
+
+<script>
+const DATA = [
+  { phase:"Phase 1", title:"Conceptual foundations — read first",
+    note:"Establish vocabulary + the two core toolchains",
+    papers:[
+    { id:"zsch", cls:"cch", tag:"CCH",
+      ttl:"Zscheischler et al. (2020)",
+      sub:"A typology of compound weather and climate events — Nature Reviews Earth &amp; Environment 1, 333–347",
+      summary:"Review article that gives the field its classification scheme. Compound events are combinations of multiple climate drivers and/or hazards that together produce societal or environmental risk. Proposes four categories: <b>preconditioned</b> (a climate-driven precondition aggravates a hazard's impact), <b>multivariate</b> (multiple concurrent drivers/hazards produce an impact), <b>temporally compounding</b> (a succession of hazards), and <b>spatially compounding</b> (hazards in multiple connected locations aggregate). Argues that understanding and quantification of such events remains immature — which is precisely the gap this project sits in.",
+      focus:["<b>Figure 1</b> — the four-class typology diagram. This is the single most reused figure in the field; you will cite it to place your own study.",
+             "<b>Table 1 / definitions section</b> — the precise wording of each event class. Use their terminology verbatim so reviewers can locate your work.",
+             "<b>Section on analysis and quantification challenges</b> — sets up why copula methods are needed at all."],
+      skip:"The extended catalogue of illustrative case studies, unless you need a citable precedent for a specific event type. This is a vocabulary source, not a methods source — do not expect equations.",
+      why:"Every paper below cites this. Reading it second-hand is why compound-event terminology gets misused. For your Nepal GLOF work, a GLOF triggered by monsoon precondition + moraine failure is <i>preconditioned</i>; peak-plus-volume flooding is <i>multivariate</i>. Classify your case explicitly in your introduction.",
+      url:"https://www.nature.com/articles/s43017-020-0060-z" },
+
+    { id:"salv", cls:"stat", tag:"Copula",
+      ttl:"Salvadori &amp; De Michele (2004)",
+      sub:"Frequency analysis via copulas: theoretical aspects and applications to hydrological events — Water Resources Research 40, W12511",
+      summary:"The foundational paper that brought copulas into hydrology. Provides a general theoretical framework using copulas to study return periods of hydrological events that depend on the joint behaviour of two non-independent random variables (canonically flood peak and volume), generalizable to the multivariate case. Key practical result: using copulas greatly simplifies the calculation and can yield <b>analytical expressions for the isolines of return periods</b>, in both the unconditional and conditional case.",
+      focus:["<b>The derivation of T<sub>AND</sub> and T<sub>OR</sub></b> — these are the exact formulas your project computes. T = μ / P(exceedance), where μ is the mean inter-arrival time.",
+             "<b>The return-period isoline section</b> — the level curve C(F(Q),F(V)) = 1−1/T. This curve is the object you will later optimise over for routed design (see Requena refinement in your KnowledgeBase §5).",
+             "<b>The worked bivariate peak–volume example</b> — mirror its structure for your own dataset.",
+             "<b>Conditional return periods</b> — useful if you later frame GLOF risk as conditional on lake volume."],
+      skip:"The formal copula axioms and Sklar's-theorem proof, unless you need the theorem stated rigorously in a methods section. Get that from Nelsen (2006) <i>Introduction to Copulas</i> instead — it is the standard textbook reference and easier to cite.",
+      why:"This is the mathematical backbone of the whole CCH half of your project. Note the ordering result T<sub>AND</sub> &gt; T<sub>univariate</sub> &gt; T<sub>OR</sub> — misapplying AND where OR is physically correct will overstate design safety.",
+      url:"https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2004WR003133" },
+
+    { id:"gomez", cls:"sph", tag:"SPH",
+      ttl:"Gómez-Gesteira et al. (2012)",
+      sub:"SPHysics — development of a free-surface fluid solver — Computers &amp; Geosciences",
+      summary:"The SPHysics framework paper: sets out the Lagrangian SPH formulation for free-surface flows — governing equations, kernel functions, boundary condition treatments, time-stepping — plus validation test cases. This is the theoretical parent of DualSPHysics, the code you have installed.",
+      focus:["<b>Governing equations section</b> — the SPH discretisation of continuity and momentum. You need this to interpret every DualSPHysics parameter you set.",
+             "<b>Kernel functions</b> — cubic spline vs. quintic vs. Wendland, and the smoothing length h. Choice of kernel and h drives both accuracy and runtime.",
+             "<b>Boundary conditions</b> — dynamic boundary particles. This is the most common source of unphysical results for new users.",
+             "<b>Time-stepping and stability (CFL) criteria</b> — governs whether your GLOF simulation is stable."],
+      skip:"The historical review of SPH's astrophysical origins. Interesting context, not needed for setup.",
+      why:"Required before touching DualSPHysics. Without the kernel and boundary sections, parameter choices in your .xml case files are guesswork.",
+      url:"https://www.sciencedirect.com/science/article/abs/pii/S0098300412000854" }
+  ]},
+
+  { phase:"Phase 2", title:"Core methodology — build the toolkit",
+    note:"Three tracks now run in parallel: stats, SPH, AI",
+    papers:[
+    { id:"serin", cls:"stat", tag:"Non-stationarity",
+      ttl:"Serinaldi &amp; Kilsby (2015)",
+      sub:"Stationarity is undead: uncertainty dominates the distribution of extremes — Advances in Water Resources 77, 17–36",
+      summary:"A deliberately provocative methodological critique. Argues that the growing effort to apply non-stationary models in hydrologic frequency analysis is frustrated once the <b>additional uncertainty from model complexity</b> is accounted for alongside sampling uncertainty — the added uncertainty often exceeds any gain from modelling the trend. Reviews the main non-stationary tools (time-varying distributions, non-stationary return periods, risk of failure), gives advantages and disadvantages, and works three case studies (Little Sugar Creek NC; Red River of the North; Assunpink Creek NJ) that revise over-confident published examples.",
+      focus:["<b>The model-uncertainty vs. sampling-uncertainty argument</b> — the core of the paper. Read it closely; it gives you defensible caveat language.",
+             "<b>The critique of non-stationary return periods</b> — the concept of a 'return period' becomes ambiguous under non-stationarity. Directly relevant since your entire output is a return period.",
+             "<b>At least one case study</b> — see concretely how a published non-stationary claim collapses under uncertainty analysis."],
+      skip:"The full statistical test battery in the appendices unless you are replicating their diagnostics.",
+      why:"Read this <i>before</i> claiming your model accounts for climate change. Nepal's DHM records are short; this paper tells you what you can and cannot infer from them. A reviewer who knows this paper will ask about it.",
+      url:"https://www.sciencedirect.com/science/article/pii/S0309170815000020" },
+
+    { id:"bev", cls:"stat", tag:"Compound flood",
+      ttl:"Bevacqua et al. (2019)",
+      sub:"Higher probability of compound flooding from precipitation and storm surge in Europe under anthropogenic climate change — Science Advances 5(9), eaaw5531",
+      summary:"In low-lying coastal areas, co-occurrence of high sea level and precipitation-driven runoff causes compound flooding (CF); when the two hazards interact the impact exceeds the sum of the individual events. This study quantifies the joint probability of storm surge and heavy precipitation across European coasts using a statistical (copula/vine-copula) framework driven by climate model output, and shows compound flood probability increases substantially under warming.",
+      focus:["<b>Methods — the statistical dependence model</b>: how they select and fit the copula to bivariate surge–precipitation data, and how they handle marginals separately from dependence. This is the template for your own fitting pipeline.",
+             "<b>Joint-probability / return-period maps in Results</b> — how to present bivariate exceedance results spatially. Useful as a figure template for Koshi/Gandaki/Karnali.",
+             "<b>Data and code availability statement</b> — worth checking for a reusable pipeline before you write your own.",
+             "<b>Their treatment of the present-vs-future comparison</b> — but read alongside Serinaldi &amp; Kilsby above for the uncertainty caveat."],
+      skip:"European regional detail beyond the methodology; you are borrowing the method, not the geography.",
+      why:"The closest published methodological template to what you are building. Copy the structure of their analysis, substitute your variable pair and basin.",
+      url:"https://www.science.org/doi/10.1126/sciadv.aaw5531" },
+
+    { id:"crespo", cls:"sph", tag:"DualSPHysics",
+      ttl:"Crespo et al. (2015)",
+      sub:"DualSPHysics: open-source parallel CFD solver based on Smoothed Particle Hydrodynamics — Computer Physics Communications 187, 204–216",
+      summary:"The main DualSPHysics code paper. Documents the GPU-accelerated implementation of SPH for free-surface flows, the CPU/GPU parallel architecture, the pre/post-processing chain, and validation against standard benchmarks including dam-break and wave impact problems. Demonstrates the speed-ups that make large-particle-count simulations feasible on a single workstation GPU.",
+      focus:["<b>GPU implementation section</b> — neighbour-list construction and cell-linked lists. Explains why particle count and h drive runtime the way they do; you have a verified GPU, so this determines feasible problem size.",
+             "<b>Validation benchmarks — especially the dam-break case</b>. A GLOF outburst is physically a dam-break problem; this is your verification case before running a real lake.",
+             "<b>Parameter tables</b> — map each parameter onto the theory from Gómez-Gesteira above."],
+      skip:"Internal code architecture and class structure, unless you intend to modify the solver source.",
+      why:"Reproducing their dam-break benchmark is the cheapest way to confirm your DualSPHysics install produces physically correct results before you invest in a Nepal case.",
+      url:"https://www.sciencedirect.com/science/article/abs/pii/S0010465514003397" },
+
+    { id:"krat", cls:"ai", tag:"AI / LSTM",
+      ttl:"Kratzert et al. (2018)",
+      sub:"Rainfall–runoff modelling using Long Short-Term Memory (LSTM) networks — Hydrology and Earth System Sciences 22, 6005–6022",
+      summary:"The landmark paper showing that an LSTM network, trained on many catchments simultaneously, can match or outperform well-established calibrated conceptual rainfall-runoff models (SAC-SMA + Snow-17) without any prior physical knowledge encoded. Uses the CAMELS dataset. Introduced the idea that the LSTM's internal cell states are interpretable as storage-like quantities, which blunted the 'black box' objection and opened the door to data-driven hydrology at scale.",
+      focus:["<b>LSTM architecture / formulation section</b> — the cell state and gating equations, and specifically how a hydrological input sequence is framed as a sequence-to-one problem. This is the design you will reuse for downstream routing.",
+             "<b>Benchmark comparison against SAC-SMA/HBV in Results</b> — sets the realistic performance target (NSE values) any AI model of yours should be judged against.",
+             "<b>The regional/multi-catchment training experiment</b> — training on many basins beats training per-basin. Directly relevant to Nepal, where per-basin records are short.",
+             "<b>Cell-state interpretability discussion</b> — useful defensive material for a civil-engineering audience skeptical of neural networks."],
+      skip:"Hyperparameter tuning tables — treat as reference, not reading.",
+      why:"Your intended LSTM downstream-routing component sits directly on this paper. The multi-basin training result is the key transferable insight for data-scarce Nepal.",
+      url:"https://hess.copernicus.org/articles/22/6005/2018/" }
+  ]},
+
+  { phase:"Phase 3", title:"Applied modeling — approach your problem",
+    note:"Narrow toward Nepal geography and the physics–AI bridge",
+    papers:[
+    { id:"ward", cls:"stat", tag:"Compound flood",
+      ttl:"Ward et al. (2018)",
+      sub:"Dependence between high sea-level and high river discharge increases flood hazard in global deltas and estuaries — Environmental Research Letters 13(8), 084012",
+      summary:"The first global assessment and mapping of statistical dependence between observed high sea levels and high river discharge across deltas and estuaries worldwide. Shows that where dependence exists, the joint probability of simultaneously exceeding both the design discharge and the design sea level is substantially higher than an independence assumption implies — i.e. standard univariate design underestimates hazard in these settings.",
+      focus:["<b>Results for South and Southeast Asian deltas</b> — look specifically for the Ganges–Brahmaputra system, the closest geographic and hydro-climatic analogue to the Koshi/Gandaki/Karnali outflow region.",
+             "<b>The dependence-metric methodology</b> — how they quantified dependence from gauge records with limited overlap. Directly transferable to sparse DHM data.",
+             "<b>The design-exceedance comparison</b> — the concrete demonstration that independence assumptions are unsafe. This is your motivation paragraph."],
+      skip:"Regions outside South/Southeast Asia, unless you are making a global-comparison argument.",
+      why:"Gives you an empirical, citable basis for claiming compound flooding is physically plausible in your study region — rather than asserting it.",
+      url:"https://iopscience.iop.org/article/10.1088/1748-9326/aad400" },
+
+    { id:"sadegh", cls:"stat", tag:"Multi-hazard",
+      ttl:"Sadegh et al. (2018)",
+      sub:"Multihazard scenarios for analysis of compound extreme events — Geophysical Research Letters 45, 5470–5480",
+      summary:"Reviews existing multivariate design and hazard-scenario concepts (AND/OR, most-likely design event, Kendall/critical-layer approaches) and introduces a copula-based <b>weighted average threshold scenario</b> for an expected event with multiple drivers. Uses Bayesian inference to produce uncertainty ranges for the most likely compound hazard. Central practical warning: uncertainty ranges on design quantiles can be large and <b>differ significantly between copula models</b> — copula choice is itself a major uncertainty source. Analysis uses the 26 bivariate copulas built into the MvCAT (Multivariate Copula Analysis Toolbox).",
+      focus:["<b>The review of design/hazard scenario concepts</b> — the clearest single comparison of AND vs OR vs most-likely vs Kendall in one place. Pair this with §5 of your KnowledgeBase.",
+             "<b>The copula-model-uncertainty result</b> — quantitative justification for why you must compare copula families rather than defaulting to Gumbel. This directly addresses the 'best copula selection criteria' open question in your research log.",
+             "<b>MvCAT workflow section</b> — a ready-made implementation. Worth using as a cross-check against your <code>pyvinecopulib</code> results even if you stay in Python."],
+      skip:"The full Bayesian sampler details unless you are implementing the uncertainty quantification yourself.",
+      why:"Answers an open question already logged in your project: how to choose a copula family, and how much that choice matters. Use it to validate your Gumbel baseline rather than assume it.",
+      url:"https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/2018gl077317" },
+
+    { id:"tan", cls:"sph", tag:"SPH debris",
+      ttl:"SPH–DEM debris flow literature (Tan et al., 2022 and related)",
+      sub:"Multiphase SPH–DEM coupling for debris flow impact on retention structures — Acta Geotechnica and related journals",
+      summary:"This thread covers coupled SPH–DEM (discrete element) modelling of debris flows: fluid phase by SPH, solid/granular phase by DEM, with the coupling used to reproduce impact pressures on rigid and flexible check dams and barriers, validated against scaled flume experiments. Relevant to mountain catchments where a GLOF entrains sediment and behaves as a debris flow rather than clear water.",
+      focus:["<b>The SPH–DEM coupling formulation</b> — how momentum is exchanged between phases.",
+             "<b>Impact-pressure validation against flume data</b> — the quantity a check-dam designer actually needs.",
+             "<b>Rheology / yield-stress treatment</b> — whether the flow is modelled as Newtonian, Bingham, or granular changes results substantially."],
+      skip:"Skip this branch entirely if your scope stays clear-water flood only. Revisit only if you extend to sediment-laden GLOF or check-dam design.",
+      why:"Optional branch. Nepal sits in a highly active debris-flow zone, so this is a natural scope extension — but it doubles the modelling burden.",
+      flag:"Citation needs verification. Your roadmap lists this as 'Tan et al. (2022) — Acta Geotechnica / related debris flow SPH literature', which is a placeholder rather than a confirmed reference. Pin down the exact paper before citing it.",
+      url:"" },
+
+    { id:"raissi", cls:"ai", tag:"PINNs",
+      ttl:"Raissi, Perdikaris &amp; Karniadakis (2019)",
+      sub:"Physics-informed neural networks: a deep learning framework for forward and inverse problems involving nonlinear PDEs — Journal of Computational Physics 378, 686–707",
+      summary:"The foundational PINNs paper. Shows that a governing PDE can be embedded directly into a neural network's loss function as a residual term, so the network is penalised for violating physics. This constrains predictions to be physically consistent and allows training with very sparse data. Demonstrated on fluid-mechanics PDEs including Navier–Stokes, and covers both forward problems (solve the PDE) and inverse problems (infer unknown parameters from sparse observations).",
+      focus:["<b>The loss-function formulation embedding PDE residuals</b> (early–mid paper) — the single conceptual idea you need. Everything else is application.",
+             "<b>The automatic-differentiation mechanism</b> — how derivatives of the network output w.r.t. inputs give the PDE residual without a mesh.",
+             "<b>The inverse-problem examples</b> — arguably more relevant to you than forward solving: inferring parameters from sparse gauge data is the data-scarce Nepal situation."],
+      skip:"Skip for now if PINNs are not in your near-term plan. Return only when you have a working SPH case and a working LSTM — this is the bridge between them, not a starting point.",
+      why:"Optional branch, but this is the theoretical justification if you later argue your AI model is physically consistent rather than a pure black box — a strong claim for a civil-engineering venue.",
+      url:"https://www.sciencedirect.com/science/article/pii/S0021999118307125" }
+  ]},
+
+  { phase:"Phase 4", title:"Research frontier — define your contribution",
+    note:"Where the three tracks converge",
+    papers:[
+    { id:"lowe", cls:"ai", tag:"Surrogate models",
+      ttl:"Löwe et al. (2021) — U-FLOOD; with Zhu et al. (2021)",
+      sub:"U-FLOOD — topographic deep learning for predicting urban pluvial flood water depth — Journal of Hydrology 603, 126898",
+      summary:"Investigates how deep learning should be configured to predict 2D maximum water-depth maps for urban pluvial floods. Adapts <b>U-Net</b>, an image-segmentation architecture, to exploit patterns in both hyetographs (rainfall time series) and topographic data, with the explicit aim of fast prediction for rain events and spatial locations <i>not seen in training</i>. Performs forward selection over topographic predictors, finding that aspect and local depressions materially improve prediction. Zhu et al. (2021) is the companion thread: DNN surrogates predicting flood depth directly from hydrographs. Together this literature reports 100–1000× speed-ups over numerical solvers at acceptable accuracy.",
+      focus:["<b>The training-data generation section</b> — how many hydrodynamic simulations were needed and how scenarios were sampled. This is the direct precedent for using your SPH runs as training data, and tells you how many SPH cases you must budget for.",
+             "<b>The forward selection of topographic predictors</b> — which terrain variables actually carry information. Saves you a large ablation study.",
+             "<b>The generalisation test to unseen locations/events</b> — the hard part, and the claim reviewers will scrutinise.",
+             "<b>Reported accuracy vs. speed-up trade-off</b> — sets the bar your surrogate must clear to be worth publishing."],
+      skip:"Urban-drainage-specific preprocessing, which will not transfer to a mountain GLOF setting.",
+      why:"This is the closest existing work to your strongest contribution angle. Note the gap explicitly: this literature trains on grid-based hydrodynamic solvers (LISFLOOD-FP and similar). Almost nobody uses <b>SPH</b> as the training-data source — that is your opening.",
+      url:"https://www.sciencedirect.com/science/article/pii/S0022169421009483" },
+
+    { id:"agha", cls:"cch", tag:"Climate extremes",
+      ttl:"AghaKouchak et al. (2020)",
+      sub:"Climate extremes and compound hazards in a warming world — Annual Review of Earth and Planetary Sciences 48, 519–548",
+      summary:"Comprehensive review of climate extremes and compound hazards under warming. Covers the methodological challenges that define the field: data scarcity, non-stationarity, dependence modelling, and — most usefully for you — the persistent gap between scientific understanding of compound hazards and actual engineering design practice, with attention to developing-country contexts.",
+      focus:["<b>The data-scarcity / developing-country section</b> — your citable framing for the Nepal data-gap argument in the introduction.",
+             "<b>The science–practice gap discussion</b> — supports the observation already in your KnowledgeBase that ASCE 7 / Eurocode / IS 1893 are fundamentally univariate while real hazards co-occur. That gap is itself a publishable observation.",
+             "<b>The methodological-challenges section</b> — a checklist of limitations to acknowledge before a reviewer raises them."],
+      skip:"Sections on hazard types outside flood/compound-climate scope (e.g. wildfire-specific material) unless you broaden.",
+      why:"This is your motivation-and-gap paper. Reviews do not make a contribution, but they make your gap statement defensible.",
+      url:"https://www.annualreviews.org/doi/10.1146/annurev-earth-071719-055228" },
+
+    { id:"domin", cls:"sph", tag:"DualSPHysics v5",
+      ttl:"Domínguez et al. (2022)",
+      sub:"DualSPHysics: from fluid dynamics to multiphysics problems — Computational Particle Mechanics 8, 867–895",
+      summary:"The DualSPHysics v5.0 release paper. Documents the current capability set: multi-phase flows, improved boundary condition schemes (modified dynamic boundaries, mDBC), coupling with external solvers (DEM, moving bodies, wave generation), and enhanced GPU performance. Represents the current state of the art for the platform you have installed.",
+      focus:["<b>The new-features list</b> — cross-check against your installed version so you do not follow an outdated tutorial that omits capabilities you have.",
+             "<b>mDBC boundary conditions</b> — a substantial accuracy improvement over the original dynamic boundary particles described in the 2015 paper. Use these.",
+             "<b>Multi-phase and external-solver coupling</b> — the entry point if you later add sediment (links to the SPH–DEM branch above)."],
+      skip:"Application examples outside free-surface hydraulics.",
+      why:"Read alongside your installation. Old tutorials will steer you toward deprecated boundary treatments; this paper tells you what v5 actually offers.",
+      url:"https://link.springer.com/article/10.1007/s40571-021-00404-2" },
+
+    { id:"nevo", cls:"ai", tag:"Operational AI",
+      ttl:"Nevo et al. (2022)",
+      sub:"Flood forecasting with machine learning models in an operational framework — Hydrology and Earth System Sciences 26, 4013–4032",
+      summary:"Documents Google's operational flood forecasting system — real-time flood warnings for riverine floods on large gauged rivers, operational since 2018 and deployed in India and Bangladesh. Four subsystems: data validation, stage forecasting, inundation modelling, and alert distribution; machine learning is used in two of them. Reports that in 2021 more than 100 million flood alerts were sent to people near rivers over an area of 470,000 km².",
+      focus:["<b>The stage-forecasting ML subsystem</b> — the architecture that actually runs in production, useful as a realism check on your own model design.",
+             "<b>The inundation-modelling subsystem</b> — how they convert a forecast stage into a flood map at operational speed. Same problem your surrogate model addresses.",
+             "<b>Discussion of data scarcity and deployment in South Asia</b> — geographically adjacent to Nepal; grounds any operational-relevance claim you make.",
+             "<b>The data-validation subsystem</b> — an under-appreciated section. Gauge quality control is a real problem you will hit with DHM records."],
+      skip:"Serving/infrastructure engineering details — not relevant to a research contribution.",
+      flag:"Citation correction: your roadmap lists this as a <i>Nature</i> paper. The operational-framework paper is in <b>HESS (2022)</b>. The Google flood-forecasting paper in <i>Nature</i> is Nearing et al. (2024), 'Global prediction of extreme floods in ungauged watersheds' — a different, also relevant paper, especially for ungauged Nepali catchments. Decide which one you actually want to cite.",
+      url:"https://hess.copernicus.org/articles/26/4013/2022/" },
+
+    { id:"goal", cls:"goal", tag:"Target",
+      ttl:"Your contribution point",
+      sub:"Where the three threads converge",
+      summary:"Per your KnowledgeBase: <b>SPH-generated GLOF outflow hydrographs → LSTM downstream routing → copula joint return period framework</b>, applied to a specific Nepali glacial lake. Target venue: <i>Natural Hazards and Earth System Sciences</i> (NHESS) — open access, Copernicus, strong CCH presence, regular Himalayan coverage. Supporting claim already noted: a copula-based compound flood analysis for the Koshi/Gandaki/Karnali systems at the resolution feasible from DHM records does not yet exist.",
+      focus:["<b>Gap 1 (strongest):</b> the surrogate-model literature (Löwe/Zhu) trains on grid-based hydrodynamic solvers, not SPH. SPH as the training-data source is largely unclaimed.",
+             "<b>Gap 2:</b> no copula-based compound flood analysis exists for Nepal's major river systems at feasible resolution.",
+             "<b>Gap 3:</b> AND/OR/Kendall return-period selection is rarely tied explicitly to the physical failure mechanism of the structure — your infrastructure matrix (KnowledgeBase §5) is a contribution in itself.",
+             "<b>Immediate blocker:</b> per your project status, you still need a real flood peak–volume dataset and a first validation case. Everything above is reading; this is the bottleneck."],
+      skip:"",
+      why:"Do not attempt all three pillars at once for a first paper. The copula + Nepal-data component alone is publishable; SPH and the AI surrogate are the follow-on papers.",
+      url:"" }
+  ]}
+];
+
+const root = document.getElementById('root');
+DATA.forEach((ph, pi) => {
+  const sec = document.createElement('section');
+  sec.className = 'phase';
+  sec.innerHTML = `<div class="phase-hd"><span class="badge">${ph.phase}</span>
+    <span class="phase-title">${ph.title}</span>
+    <span class="phase-note">${ph.note}</span></div>`;
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  ph.papers.forEach(p => {
+    const n = document.createElement('div');
+    n.className = 'node ' + p.cls;
+    const focusList = p.focus && p.focus.length
+      ? `<h4>Focus on these sections</h4><ul>${p.focus.map(f=>`<li>${f}</li>`).join('')}</ul>` : '';
+    const skipTxt = p.skip ? `<h4>Skip or skim</h4><p class="skip">${p.skip}</p>` : '';
+    const whyTxt = p.why ? `<h4>Why it matters here</h4><p>${p.why}</p>` : '';
+    const flagTxt = p.flag ? `<div class="flag">⚠ ${p.flag}</div>` : '';
+    const linkTxt = p.url ? `<div class="link">→ <a href="${p.url}" target="_blank" rel="noopener">Publisher page</a></div>` : '';
+    n.innerHTML = `
+      <div class="node-hd">
+        <span class="arrow">▶</span>
+        <span class="ttl">${p.ttl}<small>${p.sub}</small></span>
+        <span class="tag ${p.cls}">${p.tag}</span>
+      </div>
+      <div class="body">
+        <h4>Summary of the work</h4><p>${p.summary}</p>
+        ${focusList}${skipTxt}${whyTxt}${flagTxt}${linkTxt}
+      </div>`;
+    n.querySelector('.node-hd').addEventListener('click', () => n.classList.toggle('open'));
+    grid.appendChild(n);
+  });
+  sec.appendChild(grid);
+  root.appendChild(sec);
+  if (pi < DATA.length - 1) {
+    const f = document.createElement('div');
+    f.className = 'flow'; f.textContent = '↓';
+    root.appendChild(f);
+  }
+});
+function setAll(open) {
+  document.querySelectorAll('.node').forEach(n => n.classList.toggle('open', open));
+}
+</script>
+</body>
+</html>
