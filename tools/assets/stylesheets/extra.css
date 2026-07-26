@@ -1,3 +1,53 @@
+/* Custom palette: Light Blue #93B7BE, Mint Cream #F1FFFA, Dust Grey #D5C7BC,
+   Smoky Rose #785964, Gunmetal #454545. Requires primary/accent: custom in
+   mkdocs.yml — Material then expects these variables defined here instead of
+   picking from its built-in named colors. */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:        #785964; /* Smoky Rose header */
+  --md-primary-fg-color--light: #8a6c76;
+  --md-primary-fg-color--dark:  #5c454d;
+  --md-primary-bg-color:        #f1fffa; /* text/icons on the header */
+  --md-primary-bg-color--light: rgba(241, 255, 250, 0.7);
+
+  --md-accent-fg-color:         #93b7be; /* Light Blue links/highlights */
+  --md-accent-fg-color--transparent: rgba(147, 183, 190, 0.1);
+  --md-accent-bg-color:         #454545;
+  --md-accent-bg-color--light:  #454545;
+
+  --md-default-bg-color:        #f1fffa; /* Mint Cream page background */
+  --md-default-fg-color:        #454545; /* Gunmetal body text */
+  --md-default-fg-color--light: #5c5c5c;
+  --md-default-fg-color--lighter: #8a8a8a;
+  --md-default-fg-color--lightest: #d5c7bc;
+
+  --md-typeset-a-color:         #785964; /* Smoky Rose links */
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:        #454545; /* Gunmetal header */
+  --md-primary-fg-color--light: #5c5c5c;
+  --md-primary-fg-color--dark:  #2e2e2e;
+  --md-primary-bg-color:        #f1fffa;
+  --md-primary-bg-color--light: rgba(241, 255, 250, 0.7);
+
+  --md-accent-fg-color:         #93b7be; /* Light Blue links/highlights */
+  --md-accent-fg-color--transparent: rgba(147, 183, 190, 0.15);
+  --md-accent-bg-color:         #454545;
+  --md-accent-bg-color--light:  #454545;
+
+  --md-default-bg-color:        #454545; /* Gunmetal page background */
+  --md-default-fg-color:        #f1fffa; /* Mint Cream body text */
+  --md-default-fg-color--light: #d4dedb;
+  --md-default-fg-color--lighter: #a9b6b2;
+  --md-default-fg-color--lightest: #6d7876;
+
+  --md-typeset-a-color:         #93b7be;
+
+  --md-default-bg-color--light:  #5c5c5c;
+  --md-default-bg-color--lighter: #6a6a6a;
+  --md-code-bg-color:            #3c3c3c;
+}
+
 /* Notes contain wide comparison tables (copula families, method comparison).
    Let them scroll rather than squash on a phone. */
 .md-typeset table:not([class]) {
