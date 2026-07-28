@@ -16,7 +16,11 @@ theme:
   name: material
   language: en
   features:
-    - navigation.instant
+    # navigation.instant is deliberately OFF. It swaps the page body via XHR
+    # instead of doing a real navigation, and browser features that key off page
+    # load stop working: Chrome's "Listen to this page", reading mode, and
+    # built-in translate. These notes get read on a phone, so that matters more
+    # than the navigation being marginally snappier on a static site.
     - navigation.tracking
     - navigation.top
     - navigation.indexes
