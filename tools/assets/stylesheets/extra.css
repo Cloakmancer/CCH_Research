@@ -23,29 +23,60 @@
   --md-typeset-a-color:         #785964; /* Smoky Rose links */
 }
 
+/* Dark mode is deliberately NOT the light palette inverted. It follows the
+   Claude chat scheme: warm near-black surfaces (brown-grey, not blue-grey), a
+   warm off-white for text rather than pure white, and coral as the single
+   accent. The light scheme above is unchanged. */
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color:        #454545; /* Gunmetal header */
-  --md-primary-fg-color--light: #5c5c5c;
-  --md-primary-fg-color--dark:  #2e2e2e;
-  --md-primary-bg-color:        #f1fffa;
-  --md-primary-bg-color--light: rgba(241, 255, 250, 0.7);
+  --md-primary-fg-color:        #1f1e1d; /* header — the darker of the two surfaces */
+  --md-primary-fg-color--light: #30302e;
+  --md-primary-fg-color--dark:  #171716;
+  --md-primary-bg-color:        #f5f4ef; /* text/icons on the header */
+  --md-primary-bg-color--light: rgba(245, 244, 239, 0.7);
 
-  --md-accent-fg-color:         #93b7be; /* Light Blue links/highlights */
-  --md-accent-fg-color--transparent: rgba(147, 183, 190, 0.15);
-  --md-accent-bg-color:         #454545;
-  --md-accent-bg-color--light:  #454545;
+  --md-accent-fg-color:         #d97757; /* coral — links, highlights, hovers */
+  --md-accent-fg-color--transparent: rgba(217, 119, 87, 0.14);
+  --md-accent-bg-color:         #1f1e1d;
+  --md-accent-bg-color--light:  #30302e;
 
-  --md-default-bg-color:        #454545; /* Gunmetal page background */
-  --md-default-fg-color:        #f1fffa; /* Mint Cream body text */
-  --md-default-fg-color--light: #d4dedb;
-  --md-default-fg-color--lighter: #a9b6b2;
-  --md-default-fg-color--lightest: #6d7876;
+  --md-default-bg-color:        #262624; /* page surface */
+  --md-default-bg-color--light:  #30302e; /* raised: tables, admonitions */
+  --md-default-bg-color--lighter: #3a3a37;
+  --md-default-bg-color--lightest: #444441;
 
-  --md-typeset-a-color:         #93b7be;
+  --md-default-fg-color:        #f5f4ef; /* warm off-white, never #fff */
+  --md-default-fg-color--light: #c9c6bd; /* secondary text */
+  --md-default-fg-color--lighter: #918e86; /* muted, captions */
+  --md-default-fg-color--lightest: #4a4945; /* rules and dividers */
 
-  --md-default-bg-color--light:  #5c5c5c;
-  --md-default-bg-color--lighter: #6a6a6a;
-  --md-code-bg-color:            #3c3c3c;
+  --md-typeset-a-color:         #d97757;
+  --md-typeset-mark-color:      rgba(217, 119, 87, 0.28);
+
+  --md-code-bg-color:           #1f1e1d;
+  --md-code-fg-color:           #e8e6df;
+  --md-code-hl-comment-color:   #918e86;
+  --md-code-hl-string-color:    #b9c99a;
+  --md-code-hl-number-color:    #e0a06a;
+  --md-code-hl-keyword-color:   #d97757;
+  --md-code-hl-function-color:  #8fb6d9;
+
+  /* Material's default row rule is a cool blue-white at 12%; warm it to match
+     the rest of the scheme. Subtle — it is the only table border drawn. */
+  --md-typeset-table-color:     rgba(245, 244, 239, 0.12);
+
+  --md-footer-bg-color:         #1f1e1d;
+  --md-footer-bg-color--dark:   #171716;
+  --md-footer-fg-color:         #f5f4ef;
+  --md-footer-fg-color--light:  #918e86;
+  --md-footer-fg-color--lighter: #6b6963;
+}
+
+/* The figures are drawn on a light card (no single ink colour is legible on
+   both themes). On the warm dark surface an unframed white rectangle glares —
+   round and inset it slightly so it reads as a deliberate card. */
+[data-md-color-scheme="slate"] .md-typeset img {
+  border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* Notes contain wide comparison tables (copula families, method comparison).
