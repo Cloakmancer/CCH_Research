@@ -79,6 +79,42 @@
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+/* Read-aloud button (javascripts/readaloud.js). It sits in the header next to
+   the palette toggle — a floating bottom-right control overlaps the right-hand
+   table of contents on desktop and swallows clicks meant for its last entries. */
+.md-readaloud {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Match Material's own header buttons — .4rem padding + .2rem margin is what
+     turns a 24px icon into a thumb-sized target. Do not zero this out. */
+  padding: .4rem;
+  margin: .2rem;
+  border: none;
+  cursor: pointer;
+  color: currentcolor;
+  background: transparent;
+}
+.md-readaloud svg { display: block; }
+.md-readaloud--on { color: var(--md-accent-fg-color); }
+.md-readaloud:focus-visible { outline: 2px solid var(--md-accent-fg-color); outline-offset: 2px; }
+
+/* Fallback only: used if the header is missing (a theme change would do it). */
+.md-readaloud--floating {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 5;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  color: var(--md-primary-bg-color);
+  background: var(--md-primary-fg-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+@media print { .md-readaloud { display: none; } }
+
 /* Notes contain wide comparison tables (copula families, method comparison).
    Let them scroll rather than squash on a phone. */
 .md-typeset table:not([class]) {
