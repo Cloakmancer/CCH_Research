@@ -30,6 +30,11 @@ material is standard methodology; anything unpublished stays out of this reposit
 
     Dated record of what was done and decided.
 
+-   :material-chart-bell-curve: **[Statistics Study Log](stats-study-log.md)**
+
+    Parallel elementary statistics track. Each entry ends with an explicit bridge from the
+    concept to CCH analysis.
+
 </div>
 
 ---

@@ -33,6 +33,7 @@ MARKDOWN_MAP: dict[str, str] = {
     "3.KnowledgeBase.md.md": "knowledge-base.md",
     "4.LiteratureReadingGuide.md": "literature-guide.md",
     "4.Revision_Copula_SPH_LSTM.md": "revision-copula-sph-lstm.md",
+    "5.StatsStudyLog.md": "stats-study-log.md",
 }
 
 # Deliberately NOT published:
