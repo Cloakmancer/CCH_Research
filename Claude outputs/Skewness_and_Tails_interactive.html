@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why the bell curve under-predicts floods</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0:#f4f4f1;
+    --surface-1:#fcfcfb;
+    --surface-2:#eceae4;
+    --line:#dcdad2;
+    --text-primary:#0b0b0b;
+    --text-secondary:#52514e;
+    --text-muted:#75736c;
+    --series-1:#2a78d6;   /* the Normal model — "what we assumed" */
+    --series-2:#eb6834;   /* the real, right-skewed river — "what happens" */
+    --series-1-soft:#2a78d61f;
+    --series-2-soft:#eb68341f;
+    --grid:#e6e4dc;
+    --accent-rule:#75736c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-0:#121211;
+      --surface-1:#1a1a19;
+      --surface-2:#232322;
+      --line:#38383400;
+      --line:#383834;
+      --text-primary:#ffffff;
+      --text-secondary:#c3c2b7;
+      --text-muted:#9a998f;
+      --series-1:#3987e5;
+      --series-2:#d95926;
+      --series-1-soft:#3987e529;
+      --series-2-soft:#d9592629;
+      --grid:#2c2c2a;
+      --accent-rule:#9a998f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0:#121211; --surface-1:#1a1a19; --surface-2:#232322; --line:#383834;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#9a998f;
+    --series-1:#3987e5; --series-2:#d95926;
+    --series-1-soft:#3987e529; --series-2-soft:#d9592629;
+    --grid:#2c2c2a; --accent-rule:#9a998f;
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+         background:var(--surface-0); color:var(--text-primary);
+         padding:26px 20px 60px; font-size:14px; line-height:1.6; }
+  .wrap { max-width:1000px; margin:0 auto; }
+
+  header { margin-bottom:26px; }
+  h1 { font-size:23px; font-weight:700; line-height:1.25; letter-spacing:-.01em; }
+  .sub { font-size:13.5px; color:var(--text-secondary); margin-top:8px; max-width:70ch; }
+  .kicker { font-size:10.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+            color:var(--text-muted); margin-bottom:7px; }
+
+  section.card { background:var(--surface-1); border:1px solid var(--line);
+                 border-radius:12px; padding:20px 22px 22px; margin-bottom:20px; }
+  h2 { font-size:17px; font-weight:650; letter-spacing:-.005em; margin-bottom:3px; }
+  h2 .num { color:var(--text-muted); font-weight:600; margin-right:8px; }
+  .lede { font-size:13.2px; color:var(--text-secondary); max-width:74ch; margin-bottom:16px; }
+  p { font-size:13.2px; margin-bottom:9px; max-width:74ch; }
+  p.tight { margin-bottom:5px; }
+  .say { background:var(--surface-2); border-left:3px solid var(--series-2);
+         border-radius:0 8px 8px 0; padding:11px 14px; margin:14px 0 4px;
+         font-size:13.2px; max-width:74ch; }
+  .say b { font-weight:650; }
+  em.q { font-style:normal; color:var(--text-primary); font-weight:600; }
+
+  /* --- controls ------------------------------------------------------- */
+  .controls { display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end;
+              margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line); }
+  .ctl { display:flex; flex-direction:column; gap:5px; min-width:230px; flex:1 1 230px; }
+  .ctl label { font-size:11px; font-weight:650; letter-spacing:.03em; color:var(--text-secondary);
+               text-transform:uppercase; }
+  .ctl .val { font-variant-numeric:tabular-nums; color:var(--text-primary); font-weight:600;
+              text-transform:none; letter-spacing:0; }
+  input[type=range] { width:100%; accent-color:var(--series-2); height:22px; cursor:grab; }
+  button.ctl-btn { font:inherit; font-size:12.5px; font-weight:600; padding:8px 16px;
+                   border:1px solid var(--line); background:var(--surface-2);
+                   color:var(--text-primary); border-radius:8px; cursor:pointer;
+                   transition:background .13s; }
+  button.ctl-btn:hover { background:var(--line); }
+
+  /* --- chart shell ---------------------------------------------------- */
+  figure { margin:0; }
+  .chart { width:100%; position:relative; }
+  .chart svg { width:100%; height:auto; display:block; overflow:visible; touch-action:none; }
+  figcaption { font-size:11.8px; color:var(--text-muted); margin-top:9px; max-width:74ch; }
+  .legend { display:flex; flex-wrap:wrap; gap:16px; margin:2px 0 10px; font-size:12px;
+            color:var(--text-secondary); }
+  .legend span { display:flex; align-items:center; gap:6px; }
+  .swatch { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+  .swatch.line { height:3px; border-radius:2px; }
+
+  text { font-family:inherit; }
+  .ax-label { font-size:11px; fill:var(--text-muted); font-weight:500; }
+  .ax-title { font-size:11px; fill:var(--text-secondary); font-weight:650;
+              letter-spacing:.03em; text-transform:uppercase; }
+  .gridline { stroke:var(--grid); stroke-width:1; }
+  .axisline { stroke:var(--line); stroke-width:1; }
+  .mark-label { font-size:11.5px; font-weight:650; }
+
+  .tip { position:absolute; pointer-events:none; opacity:0; transition:opacity .1s;
+         background:var(--surface-1); border:1px solid var(--line); border-radius:8px;
+         padding:8px 11px; font-size:12px; line-height:1.5; white-space:nowrap;
+         box-shadow:0 4px 16px rgba(0,0,0,.14); z-index:5; }
+  .tip .th { font-weight:650; margin-bottom:4px; }
+  .tip .row { display:flex; align-items:center; gap:7px; }
+  .tip .row .k { color:var(--text-secondary); }
+  .tip .row .v { margin-left:auto; font-variant-numeric:tabular-nums; font-weight:600;
+                 padding-left:14px; }
+
+  /* --- stat tiles ----------------------------------------------------- */
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+           gap:12px; margin:16px 0 4px; }
+  .tile { background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
+          padding:13px 15px; }
+  .tile .t-lab { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+                 color:var(--text-muted); display:flex; align-items:center; gap:6px; }
+  .tile .t-val { font-size:26px; font-weight:700; letter-spacing:-.02em; margin-top:6px;
+                 font-variant-numeric:tabular-nums; line-height:1.1; }
+  .tile .t-sub { font-size:11.5px; color:var(--text-secondary); margin-top:3px; }
+  .tile.hero { background:var(--series-2-soft); border-color:var(--series-2); }
+  .tile.hero .t-val { color:var(--series-2); font-size:30px; }
+
+  table { border-collapse:collapse; width:100%; max-width:640px; font-size:12.5px;
+          margin:14px 0 4px; }
+  th, td { text-align:left; padding:7px 11px; border-bottom:1px solid var(--line); }
+  th { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted);
+       font-weight:700; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tbody tr:last-child td { border-bottom:none; }
+  details { margin-top:12px; }
+  summary { font-size:12px; color:var(--text-secondary); cursor:pointer; font-weight:600; }
+
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:720px) { .split { grid-template-columns:1fr; } h1 { font-size:20px; } }
+
+  footer { font-size:12px; color:var(--text-muted); border-top:1px solid var(--line);
+           padding-top:14px; margin-top:26px; }
+  footer a { color:var(--series-1); text-decoration:none; }
+  footer a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Statistics study · Day 1 · Distribution shape</div>
+  <h1>Why the bell curve under-predicts floods</h1>
+  <p class="sub">Five things to play with. Each one takes the same idea a step further: real river
+  data is <em>right-skewed</em>, a Normal distribution is not, and the gap between them is almost
+  zero in the middle and enormous in the tail — which is exactly where a cascading hazard is
+  decided. Drag the sliders; the numbers are live.</p>
+</header>
+
+<!-- ============================================================ 1 -->
+<section class="card">
+  <h2><span class="num">1</span>The two shapes</h2>
+  <p class="lede">Both curves below have the <b>same mean and the same standard deviation</b>. The
+  only thing that differs is shape. Watch what happens to the mean, median and mode as you make
+  the river more skewed.</p>
+
+  <div class="controls">
+    <div class="ctl">
+      <label>How skewed is the river <span class="val" id="cv1-val"></span></label>
+      <input type="range" id="cv1" min="5" max="90" value="55">
+    </div>
+    <div class="ctl" style="flex:0 0 auto;min-width:0">
+      <label>Mean annual maximum</label>
+      <div style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums">800 m³/s
+        <span style="font-weight:400;color:var(--text-muted)">(held fixed)</span></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch line" style="background:var(--series-1)"></i>Normal — what we assumed</span>
+    <span><i class="swatch line" style="background:var(--series-2)"></i>Log-normal — how rivers actually behave</span>
+  </div>
+  <figure>
+    <div class="chart" id="c1"></div>
+    <figcaption>Probability density of the annual maximum discharge. Hover for values. Vertical
+    rules mark the mode, median and mean of the skewed curve.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Mode</div><div class="t-val" id="t-mode"></div>
+      <div class="t-sub">the most common year</div></div>
+    <div class="tile"><div class="t-lab">Median</div><div class="t-val" id="t-med"></div>
+      <div class="t-sub">half the years are below this</div></div>
+    <div class="tile"><div class="t-lab">Mean</div><div class="t-val">800 m³/s</div>
+      <div class="t-sub">the average — pulled right</div></div>
+    <div class="tile"><div class="t-lab">Mean − median</div><div class="t-val" id="t-gap"></div>
+      <div class="t-sub">how hard the tail is pulling</div></div>
+  </div>
+
+  <div class="say"><b>In words:</b> a handful of monster years drag the <em class="q">mean</em>
+  upward. The <em class="q">median</em> barely moves, because it only cares about which value sits
+  in the middle when you line them up — one enormous flood moves the middle by one place, not by a
+  thousand cubic metres. So <b>mode &lt; median &lt; mean</b> is not a formula to memorise; it is
+  just the arithmetic of a long right tail. And it means that saying "average discharge is 800"
+  describes a year that is actually <span id="say-pct"></span> — the mean is not typical.</div>
+</section>
+
+<!-- ============================================================ 2 -->
+<section class="card">
+  <h2><span class="num">2</span>The tail is where the whole argument lives</h2>
+  <p class="lede">Now the same two distributions, asked a different question: <b>how often is a
+  given discharge exceeded?</b> The vertical axis is the return period — "once in every N years".
+  Drag the threshold. In the middle of the range the two models roughly agree. Push the threshold
+  right and they diverge catastrophically.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:1 1 340px">
+      <label>Trigger threshold q* <span class="val" id="q2-val"></span></label>
+      <input type="range" id="q2" min="1000" max="3400" value="2200" step="10">
+    </div>
+    <div class="ctl">
+      <label>How skewed is the river <span class="val" id="cv2-val"></span></label>
+      <input type="range" id="cv2" min="20" max="90" value="55">
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch line" style="background:var(--series-1)"></i>Normal says…</span>
+    <span><i class="swatch line" style="background:var(--series-2)"></i>Reality says…</span>
+  </div>
+  <figure>
+    <div class="chart" id="c2"></div>
+    <figcaption>Return period of a given discharge, log scale. The two dots are where your
+    threshold crosses each model; the vertical distance between them is the error.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Normal model</div><div class="t-val" id="t-tn"></div>
+      <div class="t-sub" id="t-tn-sub"></div></div>
+    <div class="tile"><div class="t-lab">Skewed (real)</div><div class="t-val" id="t-ts"></div>
+      <div class="t-sub" id="t-ts-sub"></div></div>
+    <div class="tile hero"><div class="t-lab">The error</div><div class="t-val" id="t-ratio"></div>
+      <div class="t-sub">times rarer than it really is</div></div>
+  </div>
+
+  <div class="say"><b>In words:</b> the Normal curve's tail dies off as
+  <em class="q">e<sup>−z²/2</sup></em> — squared in the exponent, which is savagely fast. Three
+  standard deviations out it already says "1 in 740"; four says "1 in 31,600"; five says "basically
+  never". Real skewed data does not fall away anything like that quickly. So the further into the
+  tail you go, <b>the worse the Normal gets</b> — and it gets worse fast, not gradually. Notice the
+  error number above <em>growing</em> as you drag right. That single behaviour is the entire
+  reason this matters.</div>
+
+  <p style="margin-top:14px"><b>And why it matters here specifically:</b> a compound cascading
+  hazard is defined by thresholds. The reservoir overtops, <em>then</em> the slope saturates,
+  <em>then</em> it fails, <em>then</em> the debris dams the channel. Every link in that chain is a
+  "does it cross q*?" question. So a CCH analysis spends its entire life in the part of the
+  distribution where the Normal assumption is most wrong. The error is not small and spread out;
+  it is large and concentrated precisely on the number you are trying to compute.</p>
+
+  <details>
+    <summary>Show the numbers as a table</summary>
+    <table>
+      <thead><tr><th>Threshold q*</th><th class="num">Normal says</th>
+        <th class="num">Skewed says</th><th class="num">Understated by</th></tr></thead>
+      <tbody id="tbl2"></tbody>
+    </table>
+  </details>
+</section>
+
+<!-- ============================================================ 3 -->
+<section class="card">
+  <h2><span class="num">3</span>What that looks like as a century of record</h2>
+  <p class="lede">Abstract probabilities are easy to shrug off, so here it is as data. Below is a
+  100-year record of annual maxima drawn from the <b>skewed</b> (realistic) river. The dashed line
+  is the level the Normal model calls a <b>1-in-100-year</b> flood — so the Normal expects it to be
+  crossed about once. Press the button a few times and count how often it actually happens.</p>
+
+  <div class="controls">
+    <button class="ctl-btn" id="redraw">Draw another century</button>
+    <div class="ctl" style="flex:0 0 auto;min-width:0">
+      <label>Threshold — the Normal's "1 in 100 years"</label>
+      <div style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums"
+           id="t3-thresh"></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch" style="background:var(--series-1)"></i>Annual maximum, below threshold</span>
+    <span><i class="swatch" style="background:var(--series-2)"></i>Exceeds the threshold ▲</span>
+  </div>
+  <figure>
+    <div class="chart" id="c3"></div>
+    <figcaption>One simulated century of annual maximum discharge. Bars marked ▲ cross the
+    Normal model's 1-in-100-year level.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Normal predicted</div>
+      <div class="t-val" id="t3-exp-n"></div><div class="t-sub">crossings per century</div></div>
+    <div class="tile"><div class="t-lab">Reality expects</div>
+      <div class="t-val" id="t3-exp-s"></div><div class="t-sub">crossings per century</div></div>
+    <div class="tile hero"><div class="t-lab">This century gave</div>
+      <div class="t-val" id="t3-obs"></div><div class="t-sub">actual crossings ▲</div></div>
+  </div>
+
+  <div class="say"><b>In words:</b> design to the Normal number and you have built for roughly one
+  event per century, in a river that delivers three. Nothing exotic happened — no climate change,
+  no bad luck. The model was simply the wrong shape, and every one of those extra crossings is a
+  chance for the cascade to start.</div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section class="card">
+  <h2><span class="num">4</span>The rank transform — how copulas dodge this problem</h2>
+  <p class="lede">Here is the trick that makes the copula machinery work. Take those annual maxima,
+  throw away the actual numbers, and keep only <b>each value's rank</b>: smallest gets 1, largest
+  gets n, then divide by n+1. Press the button and watch the skew evaporate.</p>
+
+  <div class="controls">
+    <button class="ctl-btn" id="rankbtn">Apply the rank transform →</button>
+    <div class="ctl" style="flex:0 0 auto;min-width:0">
+      <label>The formula</label>
+      <div style="font-size:14px;font-weight:600">u<sub>i</sub> = R(x<sub>i</sub>) / (n + 1)</div>
+    </div>
+  </div>
+
+  <figure>
+    <div class="chart" id="c4"></div>
+    <figcaption>The same 100 values, before and after. Each dot is one year. Hover for its rank.</figcaption>
+  </figure>
+
+  <p style="margin-top:12px"><b>What just happened.</b> Before: everything piles up on the left
+  with a few stragglers trailing right. After: the points are spread evenly between 0 and 1 —
+  perfectly uniform, by construction, no matter how skewed the original was. The shape problem is
+  <em>gone</em>.</p>
+
+  <p><b>Why the (n+1) and not n.</b> Divide by n and the largest value maps to exactly 1.0 — the
+  very top of the probability scale, i.e. "this is the largest flood physically possible". You do
+  not know that. The n+1 keeps every point strictly inside (0,1) and leaves room above the largest
+  observation for floods you simply haven't seen yet.</p>
+
+  <div class="say"><b>But read the small print:</b> the rank transform only solves <b>half</b> the
+  problem. It strips the marginal shape away so the copula can study the <em class="q">dependence</em>
+  between two variables cleanly. The moment you convert back to real units to state a design
+  discharge in m³/s, you need the marginal distribution again — GEV, log-Pearson III, log-normal,
+  whichever — and if you pick it wrong, your design number is wrong even with a flawless copula.
+  Two separate problems, kept separate. That is exactly why this project fits copulas
+  <b>semiparametrically</b>: use the empirical ranks for the margins, so that a bad guess at the
+  margin cannot contaminate the dependence parameter θ̂.</div>
+</section>
+
+<!-- ============================================================ 5 -->
+<section class="card">
+  <h2><span class="num">5</span>The same mistake, one dimension up</h2>
+  <p class="lede">This is the payoff. A flood has two properties that matter — its <b>peak</b> and
+  its <b>volume</b> — and a cascade usually needs both to be extreme at once. Both panels below have
+  <b>identical overall correlation</b> (Kendall's τ = 0.5). They disagree only about the corner.
+  The number to watch is on each panel: <em class="q">given that the peak is extreme, how likely is
+  the volume to be extreme too?</em> Drag the cutoff toward 1 and watch one of them hold steady
+  while the other drains away.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:1 1 340px">
+      <label>"Both extreme" means both above <span class="val" id="cut-val"></span></label>
+      <input type="range" id="cut" min="80" max="98" value="90">
+    </div>
+    <button class="ctl-btn" id="resample">Resample events</button>
+  </div>
+
+  <div class="split">
+    <figure>
+      <div class="chart" id="c5a"></div>
+      <figcaption>Gaussian copula — no upper-tail dependence.</figcaption>
+    </figure>
+    <figure>
+      <div class="chart" id="c5b"></div>
+      <figcaption>Gumbel copula — genuine upper-tail dependence.</figcaption>
+    </figure>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Gaussian says</div><div class="t-val" id="t5-g"></div>
+      <div class="t-sub">chance the volume is extreme too, given the peak is</div></div>
+    <div class="tile"><div class="t-lab">Gumbel says</div><div class="t-val" id="t5-u"></div>
+      <div class="t-sub">chance the volume is extreme too, given the peak is</div></div>
+    <div class="tile hero"><div class="t-lab">Missed by Gaussian</div><div class="t-val" id="t5-r"></div>
+      <div class="t-sub">of the joint extremes</div></div>
+  </div>
+
+  <div class="say"><b>In words:</b> the Gaussian copula has <em class="q">zero upper-tail
+  dependence</em>. That phrase means something very concrete and very strange: the further into the
+  extremes you look, the more it insists the two drivers become <b>independent</b>. Its number falls
+  — 0.57, 0.47, 0.39, 0.32 — and keeps falling toward zero. Gumbel's sits flat at about
+  <b>0.59</b> no matter how far out you push, because for this family the limit is a fixed constant,
+  λ<sub>U</sub> = 2 − 2<sup>1/θ</sup> = 2 − √2. It genuinely believes that an extreme peak brings an
+  extreme volume with it. And it should: peak and volume come from the <em>same storm</em>. They
+  ought to get more tightly bound at the extremes, not less. That is the argument for Gumbel as the
+  lead family — not an empirical preference, but the same structural error as Panel 2, one
+  dimension up.</div>
+</section>
+
+<!-- ============================================================ summary -->
+<section class="card">
+  <h2>The whole thing in one table</h2>
+  <table style="max-width:100%">
+    <thead><tr><th></th><th>One variable</th><th>Two variables</th></tr></thead>
+    <tbody>
+      <tr><td><b>The wrong tool</b></td><td>Normal distribution</td><td>Gaussian copula</td></tr>
+      <tr><td><b>What it gets wrong</b></td><td>Says big floods are rarer than they are</td>
+          <td>Says two extremes coinciding is rarer than it is</td></tr>
+      <tr><td><b>Mechanism</b></td><td>Tail decays as e<sup>−z²/2</sup> — far too fast</td>
+          <td>Zero upper-tail dependence — extremes drift apart</td></tr>
+      <tr><td><b>Where it bites</b></td><td>At the trigger threshold q*</td>
+          <td>At the joint design event</td></tr>
+      <tr><td><b>The fix</b></td><td>Fit a skewed margin (GEV / LP3 / log-normal)</td>
+          <td>Use a family with λ<sub>U</sub> &gt; 0 (Gumbel)</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:16px">Which is why Day 1 of an elementary statistics course is not a detour
+  from this project. It rehearses, in one dimension where you can see the whole thing on a single
+  axis, the exact mistake the copula work exists to avoid.</p>
+</section>
+
+<footer>
+  Generated for the CCH research notes · companion to the
+  <a href="../stats-study-log/">Statistics Study Log</a> ·
+  all curves and samples computed live in your browser (log-normal margins, mean fixed at
+  800 m³/s; Panel 5 uses τ = 0.5, i.e. Gumbel θ = 2 and Gaussian ρ = 0.707).
+</footer>
+
+</div>
+
+<script>
+"use strict";
+/* ============================ small maths ============================ */
+// Numerical Recipes erfc — fractional error < 1.2e-7 everywhere, which is
+// plenty for display and, unlike the usual A&S 7.1.26, stays honest deep in
+// the tail where this entire page makes its point.
+function erfc(x){
+  const z=Math.abs(x), t=1/(1+0.5*z);
+  const ans=t*Math.exp(-z*z-1.26551223+t*(1.00002368+t*(0.37409196+t*(0.09678418+
+    t*(-0.18628806+t*(0.27886807+t*(-1.13520398+t*(1.48851587+
+    t*(-0.82215223+t*0.17087277)))))))));
+  return x>=0?ans:2-ans;
+}
+const Phi   = x => 0.5*erfc(-x/Math.SQRT2);       // standard normal CDF
+const Qnorm = x => 0.5*erfc(x/Math.SQRT2);        // upper tail, 1-Phi, stable
+const npdf  = x => Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI);
+
+// Deterministic RNG so a reload shows the same picture until you ask for a
+// new draw — a chart that reshuffles on every repaint is impossible to discuss.
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+let rng = mulberry32(20260728);
+function gauss(){                                  // Box–Muller
+  let u=0,v=0; while(u===0)u=rng(); while(v===0)v=rng();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+// Log-normal parameterised by its MEAN and CV, so that it can be compared to a
+// Normal with the same mean and sd — the only fair comparison, since otherwise
+// you are just showing two different rivers.
+const MEAN = 800;
+function lnParams(cv){
+  const s2 = Math.log(1+cv*cv);
+  return { mu: Math.log(MEAN)-s2/2, sig: Math.sqrt(s2), sd: MEAN*cv };
+}
+const lnPdf  = (x,p) => x<=0?0:Math.exp(-Math.pow(Math.log(x)-p.mu,2)/(2*p.sig*p.sig))/
+                              (x*p.sig*Math.sqrt(2*Math.PI));
+const lnExc  = (x,p) => x<=0?1:Qnorm((Math.log(x)-p.mu)/p.sig);   // P(X > x)
+const nPdf   = (x,p) => npdf((x-MEAN)/p.sd)/p.sd;
+const nExc   = (x,p) => Qnorm((x-MEAN)/p.sd);
+const lnMed  = p => Math.exp(p.mu);
+const lnMode = p => Math.exp(p.mu-p.sig*p.sig);
+const lnSample = p => Math.exp(p.mu+p.sig*gauss());
+
+const fmt  = n => Math.round(n).toLocaleString("en-US");
+const sig2 = m => m>=10 ? fmt(Math.round(m)) : m.toPrecision(2);
+const fmtT = t => {                                 // return period, readable
+  if(!isFinite(t)||t>=1e9) return "over a billion";
+  if(t>=1e6) return sig2(t/1e6)+" million";
+  if(t>=1e4) return fmt(Math.round(t/1000)*1000);
+  if(t>=100) return fmt(Math.round(t/10)*10);
+  return fmt(t);
+};
+const fmtX = r => {
+  if(!isFinite(r)||r>=1e9) return "> 1 billion×";
+  if(r>=1e6) return sig2(r/1e6)+"M×";
+  if(r>=1000) return sig2(r/1000)+"k×";
+  if(r>=10)   return Math.round(r)+"×";
+  return r.toFixed(1)+"×";
+};
+
+/* ============================ svg helpers ============================ */
+const NS="http://www.w3.org/2000/svg";
+function E(tag,attrs,parent){
+  const n=document.createElementNS(NS,tag);
+  for(const k in attrs) n.setAttribute(k,attrs[k]);
+  if(parent) parent.appendChild(n);
+  return n;
+}
+function svgIn(host,w,h){
+  host.innerHTML="";
+  const s=E("svg",{viewBox:`0 0 ${w} ${h}`,role:"img"},host);
+  return s;
+}
+function tipFor(host){
+  const d=document.createElement("div"); d.className="tip"; host.appendChild(d); return d;
+}
+function showTip(tip,host,x,y,html){
+  tip.innerHTML=html; tip.style.opacity=1;
+  const hw=host.clientWidth, tw=tip.offsetWidth;
+  let left=x+14; if(left+tw>hw) left=x-tw-14;
+  tip.style.left=Math.max(0,left)+"px"; tip.style.top=(y-10)+"px";
+}
+// Map a viewBox-space x back to client px, so tooltips land on the mark.
+const toPx = (host,vx,W) => vx*host.clientWidth/W;
+
+/* Drag on a chart: reports the value under the pointer, clamped. */
+function draggable(svg,host,W,x0,x1,px0,px1,onMove){
+  let down=false;
+  const val = ev => {
+    const r=host.getBoundingClientRect();
+    const vx=(ev.clientX-r.left)*W/r.width;
+    const t=Math.min(1,Math.max(0,(vx-px0)/(px1-px0)));
+    return x0+t*(x1-x0);
+  };
+  svg.style.cursor="ew-resize";
+  svg.addEventListener("pointerdown",e=>{down=true;svg.setPointerCapture(e.pointerId);onMove(val(e));});
+  svg.addEventListener("pointermove",e=>{ if(down) onMove(val(e)); });
+  svg.addEventListener("pointerup",  e=>{down=false;});
+  svg.addEventListener("pointercancel",()=>{down=false;});
+}
+
+/* ====================== 1 · the two shapes =========================== */
+const c1=document.getElementById("c1"), tip1=tipFor(c1);
+function draw1(){
+  const cv=+document.getElementById("cv1").value/100;
+  document.getElementById("cv1-val").textContent="CV "+cv.toFixed(2);
+  const p=lnParams(cv);
+  const W=940,H=356,L=54,R=18,T=18,B=72;   // deep bottom margin: the mode/median/
+  const x0=0,x1=2600;                      // mean callouts live below the axis
+  const X=v=>L+(v-x0)/(x1-x0)*(W-L-R);
+
+  // one y-scale for both curves — never two
+  let ymax=0;
+  for(let i=0;i<=600;i++){ const v=x0+(x1-x0)*i/600;
+    ymax=Math.max(ymax,lnPdf(v,p),nPdf(v,p)); }
+  ymax*=1.12;
+  const Y=d=>H-B-(d/ymax)*(H-T-B);
+
+  const s=svgIn(c1,W,H);
+  for(let g=0;g<=5;g++){                                   // recessive grid
+    const yy=T+(H-T-B)*g/5;
+    E("line",{x1:L,x2:W-R,y1:yy,y2:yy,class:"gridline"},s);
+  }
+  for(let v=0;v<=x1;v+=500){
+    E("text",{x:X(v),y:H-B+18,class:"ax-label","text-anchor":"middle"},s).textContent=fmt(v);
+  }
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  E("text",{x:W-R,y:H-8,class:"ax-title","text-anchor":"end"},s)
+    .textContent="ANNUAL MAXIMUM DISCHARGE (m³/s)";
+  E("text",{x:0,y:0,class:"ax-title",transform:`translate(13,${H-B}) rotate(-90)`},s)
+    .textContent="PROBABILITY DENSITY";
+
+  const path=f=>{ let d="";
+    for(let i=0;i<=600;i++){ const v=x0+(x1-x0)*i/600;
+      d+=(i?"L":"M")+X(v).toFixed(2)+" "+Y(f(v,p)).toFixed(2); }
+    return d; };
+  E("path",{d:path(lnPdf)+`L${X(x1)} ${H-B} L${X(x0)} ${H-B} Z`,
+            fill:"var(--series-2-soft)",stroke:"none"},s);
+  E("path",{d:path(nPdf), fill:"none",stroke:"var(--series-1)","stroke-width":2.5,
+            "stroke-linejoin":"round"},s);
+  E("path",{d:path(lnPdf),fill:"none",stroke:"var(--series-2)","stroke-width":2.5,
+            "stroke-linejoin":"round"},s);
+
+  // direct labels beat a legend hunt
+  // Peak labels are pinned to opposite sides of their own peak, so they stay
+  // apart even at low skew where the two curves sit on top of each other.
+  const mo=lnMode(p);
+  E("text",{x:X(MEAN)+12,y:Y(nPdf(MEAN,p))-12,class:"mark-label",fill:"var(--series-1)"},s)
+    .textContent="Normal";
+  E("text",{x:X(mo)-12,y:Y(lnPdf(mo,p))-12,class:"mark-label",fill:"var(--series-2)",
+            "text-anchor":"end"},s).textContent="Real river";
+
+  // Callouts sit *below* the axis, under the tick numbers — at high skew the
+  // three rules crowd together near the peak and any label placed up there
+  // collides with the curve label. Below the axis they can also be fanned out
+  // to a minimum spacing, which matters at low skew where mode, median and mean
+  // converge on the same point.
+  const med=lnMed(p);
+  const marks=[[mo,"mode"],[med,"median"],[MEAN,"mean"]];
+  const lx=marks.map(m=>X(m[0]));
+  for(let i=1;i<lx.length;i++) lx[i]=Math.max(lx[i],lx[i-1]+58);
+  marks.forEach(([v,lab],i)=>{
+    E("line",{x1:X(v),x2:X(v),y1:Y(lnPdf(v,p)),y2:H-B+14,stroke:"var(--accent-rule)",
+              "stroke-width":1.5,"stroke-dasharray":"3 3"},s);
+    E("line",{x1:X(v),x2:lx[i],y1:H-B+14,y2:H-B+26,stroke:"var(--accent-rule)",
+              "stroke-width":1.5,"stroke-dasharray":"3 3"},s);
+    E("text",{x:lx[i],y:H-B+38,class:"ax-label","text-anchor":"middle",
+              "font-weight":"650",fill:"var(--text-secondary)"},s).textContent=lab;
+  });
+
+  document.getElementById("t-mode").textContent=fmt(mo);
+  document.getElementById("t-med").textContent=fmt(med);
+  document.getElementById("t-gap").textContent="+"+fmt(MEAN-med);
+  const pctBelow=Phi((Math.log(MEAN)-p.mu)/p.sig);
+  document.getElementById("say-pct").textContent=
+    "wetter than "+Math.round(pctBelow*100)+"% of all years";
+
+  // crosshair + tooltip
+  const cross=E("line",{y1:T,y2:H-B,stroke:"var(--accent-rule)","stroke-width":1,
+                        opacity:0},s);
+  s.addEventListener("pointermove",ev=>{
+    const r=c1.getBoundingClientRect(), vx=(ev.clientX-r.left)*W/r.width;
+    if(vx<L||vx>W-R){cross.setAttribute("opacity",0);tip1.style.opacity=0;return;}
+    const v=x0+(vx-L)/(W-L-R)*(x1-x0);
+    cross.setAttribute("opacity",.55);
+    cross.setAttribute("x1",vx); cross.setAttribute("x2",vx);
+    showTip(tip1,c1,toPx(c1,vx,W),40,
+      `<div class="th">${fmt(v)} m³/s</div>
+       <div class="row"><i class="swatch line" style="background:var(--series-1)"></i>
+         <span class="k">Normal</span><span class="v">${(nPdf(v,p)*1e4).toFixed(2)}</span></div>
+       <div class="row"><i class="swatch line" style="background:var(--series-2)"></i>
+         <span class="k">Real river</span><span class="v">${(lnPdf(v,p)*1e4).toFixed(2)}</span></div>
+       <div style="color:var(--text-muted);font-size:11px;margin-top:3px">density ×10⁻⁴</div>`);
+  });
+  s.addEventListener("pointerleave",()=>{cross.setAttribute("opacity",0);tip1.style.opacity=0;});
+}
+
+/* ====================== 2 · the tail ================================= */
+const c2=document.getElementById("c2"), tip2=tipFor(c2);
+const T2MIN=1, T2MAX=1e7;
+function draw2(){
+  const cv=+document.getElementById("cv2").value/100;
+  const q =+document.getElementById("q2").value;
+  document.getElementById("cv2-val").textContent="CV "+cv.toFixed(2);
+  document.getElementById("q2-val").textContent=fmt(q)+" m³/s";
+  const p=lnParams(cv);
+
+  const W=940,H=380,L=64,R=100,T=16,B=52;
+  const x0=1000,x1=3400;   // matches the slider range, so dragging tracks the pointer
+  const X=v=>L+(v-x0)/(x1-x0)*(W-L-R);
+  const Y=t=>{ const c=Math.min(Math.max(t,T2MIN),T2MAX);
+    return H-B-(Math.log10(c)-Math.log10(T2MIN))/
+      (Math.log10(T2MAX)-Math.log10(T2MIN))*(H-T-B); };
+
+  const s=svgIn(c2,W,H);
+  for(let e=0;e<=7;e++){
+    const t=Math.pow(10,e);
+    E("line",{x1:L,x2:W-R,y1:Y(t),y2:Y(t),class:"gridline"},s);
+    E("text",{x:L-9,y:Y(t)+4,class:"ax-label","text-anchor":"end"},s)
+      .textContent = t>=1e6 ? (t/1e6)+"M" : (t>=1000 ? (t/1000)+"k" : String(t));
+  }
+  for(let v=1000;v<=x1;v+=500)     // first tick anchors left, or it sits under the y labels
+    E("text",{x:X(v),y:H-B+18,class:"ax-label",
+              "text-anchor":v===x0?"start":"middle"},s).textContent=fmt(v);
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  E("text",{x:L,y:H-10,class:"ax-title"},s).textContent="DISCHARGE THRESHOLD q* (m³/s)";
+  E("text",{x:0,y:0,class:"ax-title",transform:`translate(15,${H-B}) rotate(-90)`},s)
+    .textContent="RETURN PERIOD (YEARS)";
+
+  const curve=f=>{ let d="",started=false;
+    for(let i=0;i<=700;i++){ const v=x0+(x1-x0)*i/700;
+      const t=1/f(v,p); if(t>T2MAX*1.5){ if(started)break; }
+      d+=(started?"L":"M")+X(v).toFixed(2)+" "+Y(t).toFixed(2); started=true; }
+    return d; };
+  E("path",{d:curve(nExc), fill:"none",stroke:"var(--series-1)","stroke-width":2.5,
+            "stroke-linejoin":"round","stroke-linecap":"round"},s);
+  E("path",{d:curve(lnExc),fill:"none",stroke:"var(--series-2)","stroke-width":2.5,
+            "stroke-linejoin":"round","stroke-linecap":"round"},s);
+
+  const tn=1/nExc(q,p), ts=1/lnExc(q,p);
+  // the gap IS the message — draw it
+  E("line",{x1:X(q),x2:X(q),y1:Y(Math.min(tn,T2MAX)),y2:Y(ts),
+            stroke:"var(--accent-rule)","stroke-width":1.5,"stroke-dasharray":"2 3"},s);
+  E("line",{x1:X(q),x2:X(q),y1:T,y2:H-B,stroke:"var(--accent-rule)","stroke-width":1.5},s);
+  E("text",{x:X(q),y:T-2,class:"mark-label",fill:"var(--text-secondary)",
+            "text-anchor":X(q)<L+50?"start":(X(q)>W-R-50?"end":"middle")},s)
+    .textContent="q* = "+fmt(q);
+
+  // Near the mean the two return periods almost coincide; nudge the labels apart
+  // rather than letting them print on top of each other.
+  const close=Math.abs(Y(tn)-Y(ts))<16;
+  [[tn,"var(--series-1)","Normal",tn>=ts?-1:1],
+   [ts,"var(--series-2)","Real",  ts>tn?-1:1]].forEach(([t,col,lab,dir])=>{
+    if(t>T2MAX) return;
+    E("circle",{cx:X(q),cy:Y(t),r:5.5,fill:col,stroke:"var(--surface-1)","stroke-width":2},s);
+    E("text",{x:X(q)+11,y:Y(t)+4+(close?dir*10:0),class:"mark-label",fill:col},s)
+      .textContent=lab+" 1 in "+fmtT(t);
+  });
+  if(tn>T2MAX)
+    E("text",{x:X(q)+11,y:T+14,class:"mark-label",fill:"var(--series-1)"},s)
+      .textContent="Normal — off the chart";
+
+  document.getElementById("t-tn").textContent="1 in "+fmtT(tn);
+  document.getElementById("t-tn-sub").textContent="years — "+
+    (tn>5000?"i.e. “never, don’t design for it”":"between design events");
+  document.getElementById("t-ts").textContent="1 in "+fmtT(ts);
+  document.getElementById("t-ts-sub").textContent="years — what the river will actually do";
+  document.getElementById("t-ratio").textContent=fmtX(tn/ts);
+
+  const body=document.getElementById("tbl2"); body.innerHTML="";
+  [1400,1800,2200,2600,3000].forEach(v=>{
+    const a=1/nExc(v,p), b=1/lnExc(v,p);
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${fmt(v)} m³/s</td><td class="num">1 in ${fmtT(a)}</td>`+
+                 `<td class="num">1 in ${fmtT(b)}</td>`+
+                 `<td class="num"><b>${fmtX(a/b)}</b></td>`;
+    body.appendChild(tr);
+  });
+
+  draggable(s,c2,W,x0,x1,L,W-R,v=>{
+    document.getElementById("q2").value=Math.round(v/10)*10; draw2();
+  });
+  s.addEventListener("pointermove",ev=>{
+    const r=c2.getBoundingClientRect(), vx=(ev.clientX-r.left)*W/r.width;
+    if(vx<L||vx>W-R){tip2.style.opacity=0;return;}
+    const v=x0+(vx-L)/(W-L-R)*(x1-x0);
+    showTip(tip2,c2,toPx(c2,vx,W),30,
+      `<div class="th">${fmt(v)} m³/s</div>
+       <div class="row"><i class="swatch line" style="background:var(--series-1)"></i>
+         <span class="k">Normal</span><span class="v">1 in ${fmtT(1/nExc(v,p))}</span></div>
+       <div class="row"><i class="swatch line" style="background:var(--series-2)"></i>
+         <span class="k">Real river</span><span class="v">1 in ${fmtT(1/lnExc(v,p))}</span></div>`);
+  });
+  s.addEventListener("pointerleave",()=>{tip2.style.opacity=0;});
+}
+
+/* ====================== 3 · a century of record ====================== */
+const c3=document.getElementById("c3"), tip3=tipFor(c3);
+const CV3=0.55, P3=lnParams(CV3), N3=100;
+const THRESH3 = MEAN + 2.326*P3.sd;         // the Normal's 1-in-100 level
+let years=[];
+function newCentury(){ years=[]; for(let i=0;i<N3;i++) years.push(lnSample(P3)); }
+function draw3(){
+  const W=940,H=300,L=54,R=18,T=26,B=46;
+  const ymax=Math.max(THRESH3*1.25,...years)*1.05;
+  const Y=v=>H-B-(v/ymax)*(H-T-B);
+  const bw=(W-L-R)/N3;
+  const s=svgIn(c3,W,H);
+
+  for(let g=0;g<=4;g++){
+    const v=ymax*g/4;
+    E("line",{x1:L,x2:W-R,y1:Y(v),y2:Y(v),class:"gridline"},s);
+    E("text",{x:L-9,y:Y(v)+4,class:"ax-label","text-anchor":"end"},s).textContent=fmt(v);
+  }
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  E("text",{x:L,y:H-10,class:"ax-title"},s).textContent="YEAR OF RECORD  →  100 YEARS";
+  E("text",{x:0,y:0,class:"ax-title",transform:`translate(13,${H-B}) rotate(-90)`},s)
+    .textContent="DISCHARGE (m³/s)";
+
+  let hits=0;
+  years.forEach((v,i)=>{
+    const over=v>THRESH3; if(over)hits++;
+    const x=L+i*bw, w=Math.max(2.2,bw-2);        // 2px surface gap between bars
+    E("rect",{x:x,y:Y(v),width:w,height:H-B-Y(v),rx:2,
+              fill:over?"var(--series-2)":"var(--series-1)",
+              opacity:over?1:.82},s);
+    if(over) E("text",{x:x+w/2,y:Y(v)-6,class:"mark-label","text-anchor":"middle",
+                       fill:"var(--series-2)","font-size":"12"},s).textContent="▲";
+  });
+
+  E("line",{x1:L,x2:W-R,y1:Y(THRESH3),y2:Y(THRESH3),stroke:"var(--accent-rule)",
+            "stroke-width":1.8,"stroke-dasharray":"5 4"},s);
+  E("text",{x:W-R,y:Y(THRESH3)-8,class:"mark-label","text-anchor":"end",
+            fill:"var(--text-secondary)"},s)
+    .textContent="Normal's 1-in-100-year level — "+fmt(THRESH3)+" m³/s";
+
+  document.getElementById("t3-thresh").textContent=fmt(THRESH3)+" m³/s";
+  document.getElementById("t3-exp-n").textContent="1.0";
+  document.getElementById("t3-exp-s").textContent=(N3*lnExc(THRESH3,P3)).toFixed(1);
+  document.getElementById("t3-obs").textContent=hits;
+
+  s.addEventListener("pointermove",ev=>{
+    const r=c3.getBoundingClientRect(), vx=(ev.clientX-r.left)*W/r.width;
+    const i=Math.floor((vx-L)/bw);
+    if(i<0||i>=N3){tip3.style.opacity=0;return;}
+    const v=years[i];
+    showTip(tip3,c3,toPx(c3,L+i*bw+bw/2,W),Math.max(10,Y(v)*c3.clientHeight/H-46),
+      `<div class="th">Year ${i+1}</div>
+       <div class="row"><span class="k">Peak</span><span class="v">${fmt(v)} m³/s</span></div>
+       <div class="row"><span class="k">${v>THRESH3?"▲ exceeds threshold":"below threshold"}</span></div>`);
+  });
+  s.addEventListener("pointerleave",()=>{tip3.style.opacity=0;});
+}
+
+/* ====================== 4 · the rank transform ======================= */
+const c4=document.getElementById("c4"), tip4=tipFor(c4);
+let ranked=false;
+function draw4(){
+  const W=940,H=210,L=54,R=24,T=30,B=48;
+  const s=svgIn(c4,W,H);
+  const n=years.length;
+  const sorted=years.map((v,i)=>({v,i})).sort((a,b)=>a.v-b.v);
+  const rank=new Array(n); sorted.forEach((o,k)=>rank[o.i]=k+1);
+
+  const xmaxRaw=Math.max(...years)*1.04;
+  const Xraw=v=>L+(v/xmaxRaw)*(W-L-R);
+  const Xu  =u=>L+u*(W-L-R);
+  const y=T+52;
+
+  E("line",{x1:L,x2:W-R,y1:y,y2:y,class:"axisline"},s);
+  const title=E("text",{x:L,y:T-6,class:"ax-title"},s);
+  title.textContent = ranked ? "AFTER — u = RANK / (n+1), EVENLY SPREAD ON (0,1)"
+                             : "BEFORE — RAW DISCHARGE, PILED UP ON THE LEFT";
+  const ticks = ranked ? [0,.25,.5,.75,1] : [0,500,1000,1500,2000,2500];
+  ticks.forEach(t=>{
+    const x = ranked?Xu(t):Xraw(t);
+    if(x>W-R+2) return;
+    E("line",{x1:x,x2:x,y1:y,y2:y+6,class:"axisline"},s);
+    E("text",{x:x,y:y+22,class:"ax-label","text-anchor":"middle"},s)
+      .textContent = ranked ? t.toFixed(2) : fmt(t);
+  });
+  E("text",{x:L,y:H-8,class:"ax-title"},s).textContent =
+    ranked ? "PSEUDO-OBSERVATION u" : "DISCHARGE (m³/s)";
+
+  years.forEach((v,i)=>{
+    const u=rank[i]/(n+1);
+    const cx = ranked ? Xu(u) : Xraw(v);
+    const c=E("circle",{cx:cx,cy:y,r:5,fill:"var(--series-2)",opacity:.62,
+                        stroke:"var(--surface-1)","stroke-width":1.5},s);
+    c.style.transition="cx .8s cubic-bezier(.4,0,.2,1)";
+    c.addEventListener("pointerenter",ev=>{
+      const r=c4.getBoundingClientRect();
+      showTip(tip4,c4,ev.clientX-r.left,y*c4.clientHeight/H-52,
+        `<div class="th">Year ${i+1}</div>
+         <div class="row"><span class="k">Discharge</span><span class="v">${fmt(v)} m³/s</span></div>
+         <div class="row"><span class="k">Rank</span><span class="v">${rank[i]} of ${n}</span></div>
+         <div class="row"><span class="k">u</span><span class="v">${u.toFixed(3)}</span></div>`);
+    });
+    c.addEventListener("pointerleave",()=>{tip4.style.opacity=0;});
+  });
+}
+
+/* ====================== 5 · copulas ================================== */
+const TAU=0.5, THETA=1/(1-TAU), RHO=Math.sin(Math.PI*TAU/2);
+// The quantity on display is a conditional probability in the far corner, so it
+// is estimated from a large sample (NBIG) and only a thinned subset (NDRAW) is
+// plotted. Counting from the ~2k points a scatter can legibly show gives an
+// estimate so noisy that the trend — the entire point of the panel — disappears
+// into sampling error.
+const NBIG=120000, NDRAW=5000;
+let gx,gy,ux,uy;
+function sampleCopulas(){
+  gx=new Float64Array(NBIG); gy=new Float64Array(NBIG);
+  ux=new Float64Array(NBIG); uy=new Float64Array(NBIG);
+  for(let i=0;i<NBIG;i++){
+    const z1=gauss(), z2=RHO*z1+Math.sqrt(1-RHO*RHO)*gauss();
+    gx[i]=Phi(z1); gy[i]=Phi(z2);
+  }
+  // Marshall–Olkin for an Archimedean copula: a positive-stable frailty S with
+  // index 1/theta (Chambers–Mallows–Stuck), then U_i = exp(-(E_i/S)^(1/theta)).
+  const a=1/THETA;
+  for(let i=0;i<NBIG;i++){
+    const U=Math.PI*rng(), Wv=-Math.log(rng());
+    const S=Math.sin(a*U)/Math.pow(Math.sin(U),1/a)*
+            Math.pow(Math.sin((1-a)*U)/Wv,(1-a)/a);
+    const e1=-Math.log(rng()), e2=-Math.log(rng());
+    ux[i]=Math.exp(-Math.pow(e1/S,a)); uy[i]=Math.exp(-Math.pow(e2/S,a));
+  }
+}
+// P(volume extreme | peak extreme) — the definition of upper-tail dependence,
+// and the one number that separates the two families.
+function condProb(xs,ys,cut){
+  let m=0,b=0;
+  for(let i=0;i<NBIG;i++) if(xs[i]>cut){ m++; if(ys[i]>cut) b++; }
+  return m? b/m : 0;
+}
+function drawScatter(hostId,xs,ys,cut,label,cond){
+  const host=document.getElementById(hostId);
+  const W=440,H=410,L=46,R=16,T=46,B=48;
+  const X=u=>L+u*(W-L-R), Y=u=>H-B-u*(H-T-B);
+  const s=svgIn(host,W,H);
+
+  [0,.25,.5,.75,1].forEach(t=>{
+    E("line",{x1:X(t),x2:X(t),y1:Y(0),y2:Y(1),class:"gridline"},s);
+    E("line",{x1:X(0),x2:X(1),y1:Y(t),y2:Y(t),class:"gridline"},s);
+    E("text",{x:X(t),y:H-B+17,class:"ax-label","text-anchor":"middle"},s).textContent=t.toFixed(2);
+    if(t>0)   // the two 0.00s would sit on top of each other in the corner
+      E("text",{x:L-8,y:Y(t)+4,class:"ax-label","text-anchor":"end"},s).textContent=t.toFixed(2);
+  });
+
+  // points on a canvas layer — 5,000 SVG circles per panel is not worth it
+  const cw=host.clientWidth||W, k=cw/W, dpr=window.devicePixelRatio||1;
+  const cv=document.createElement("canvas");
+  cv.width=Math.round(cw*dpr); cv.height=Math.round(H*k*dpr);
+  cv.style.cssText=`position:absolute;left:0;top:0;width:${cw}px;height:${H*k}px;
+                    pointer-events:none`;
+  host.appendChild(cv);
+  const ctx=cv.getContext("2d"); ctx.scale(dpr*k,dpr*k);
+  const cs=getComputedStyle(document.documentElement);
+  const col1=cs.getPropertyValue("--series-1").trim()||"#2a78d6";
+  const col2=cs.getPropertyValue("--series-2").trim()||"#eb6834";
+  const step=Math.max(1,Math.floor(NBIG/NDRAW));
+  ctx.globalAlpha=.3; ctx.fillStyle=col1;
+  for(let i=0;i<NBIG;i+=step){ if(gxIn(xs[i],ys[i],cut)) continue;
+    ctx.fillRect(X(xs[i])-.9,Y(ys[i])-.9,1.8,1.8); }
+  ctx.globalAlpha=.9; ctx.fillStyle=col2;
+  for(let i=0;i<NBIG;i+=step){ if(!gxIn(xs[i],ys[i],cut)) continue;
+    ctx.beginPath(); ctx.arc(X(xs[i]),Y(ys[i]),1.9,0,6.2832); ctx.fill(); }
+
+  // corner drawn last, over the cloud
+  E("rect",{x:X(cut),y:Y(1),width:X(1)-X(cut),height:Y(cut)-Y(1),
+            fill:"none",stroke:"var(--series-2)","stroke-width":1.5,
+            "stroke-dasharray":"3 3",rx:3},s);
+  E("text",{x:L,y:T-26,class:"mark-label",fill:"var(--text-primary)","font-size":"13"},s)
+    .textContent=label;
+  E("text",{x:L,y:T-8,class:"mark-label",fill:"var(--series-2)","font-size":"12.5"},s)
+    .textContent="P(both extreme | one extreme) = "+cond.toFixed(2);
+  E("text",{x:W-R,y:H-9,class:"ax-title","text-anchor":"end"},s).textContent="FLOOD PEAK (u)";
+  E("text",{x:0,y:0,class:"ax-title",transform:`translate(13,${H-B}) rotate(-90)`},s)
+    .textContent="FLOOD VOLUME (u)";
+}
+const gxIn=(a,b,c)=>a>c&&b>c;
+function draw5(){
+  const cut=+document.getElementById("cut").value/100;
+  document.getElementById("cut-val").textContent="u = "+cut.toFixed(2);
+  const g=condProb(gx,gy,cut), u=condProb(ux,uy,cut);
+  drawScatter("c5a",gx,gy,cut,"Gaussian copula",g);
+  drawScatter("c5b",ux,uy,cut,"Gumbel copula",  u);
+  document.getElementById("t5-g").textContent=g.toFixed(2);
+  document.getElementById("t5-u").textContent=u.toFixed(2);
+  document.getElementById("t5-r").textContent = u>0 ? Math.round((1-g/u)*100)+"%" : "—";
+}
+
+/* ============================ wiring ================================ */
+document.getElementById("cv1").addEventListener("input",draw1);
+document.getElementById("cv2").addEventListener("input",draw2);
+document.getElementById("q2") .addEventListener("input",draw2);
+document.getElementById("cut").addEventListener("input",draw5);
+document.getElementById("redraw").addEventListener("click",()=>{
+  newCentury(); ranked=false; draw3(); draw4();
+  document.getElementById("rankbtn").textContent="Apply the rank transform →";
+});
+document.getElementById("rankbtn").addEventListener("click",e=>{
+  ranked=!ranked; draw4();
+  e.target.textContent = ranked ? "← Back to raw discharge" : "Apply the rank transform →";
+});
+document.getElementById("resample").addEventListener("click",()=>{sampleCopulas();draw5();});
+
+newCentury(); sampleCopulas();
+draw1(); draw2(); draw3(); draw4(); draw5();
+let rt; addEventListener("resize",()=>{clearTimeout(rt);
+  rt=setTimeout(()=>{draw1();draw2();draw3();draw4();draw5();},150);});
+</script>
+</body>
+</html>

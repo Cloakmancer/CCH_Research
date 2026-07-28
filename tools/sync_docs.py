@@ -47,6 +47,7 @@ HTML_MAP: dict[str, str] = {
     "Literature_Flowchart.html": "interactive/literature-flowchart.html",
     "CCH_literature_roadmap.html": "interactive/literature-roadmap.html",
     "CCH_study_workflow_plan.html": "interactive/study-workflow.html",
+    "Skewness_and_Tails_interactive.html": "interactive/skewness-and-tails.html",
 }
 
 
@@ -203,6 +204,12 @@ def write_interactive_index(published: list[str]) -> None:
         "interactive/study-workflow.html": (
             "Study Workflow Plan",
             "Phase plan from foundations through to the coupled workflow.",
+        ),
+        "interactive/skewness-and-tails.html": (
+            "Why the Bell Curve Under-predicts Floods",
+            "Five live panels on distribution shape: the two shapes, the return-period "
+            "divergence, a simulated century of record, the rank transform, and the "
+            "Gaussian-vs-Gumbel corner. Companion to the Statistics Study Log.",
         ),
     }
 
