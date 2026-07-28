@@ -21,8 +21,10 @@ venv/
 env/
 
 # --- Data and outputs --------------------------------------------------
-# Uncomment if datasets get large or are licence-restricted.
-# data/
+# data/ is private (source data, not ours to redistribute) and large — the Nepal
+# daily rainfall workbook alone is ~29 MB. The repo is public and git history is
+# permanent, so this stays excluded regardless of size. Keep your own backup.
+data/
 # outputs/
 *.nc
 *.hdf5
@@ -33,6 +35,10 @@ env/
 *.vtk
 *.vtu
 CaseOut/
+
+# --- Claude Code local state -------------------------------------------
+# Machine-local permission settings; not useful to anyone else, and public.
+.claude/settings.local.json
 
 # --- Editors and OS ----------------------------------------------------
 .vscode/
