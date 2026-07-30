@@ -35,6 +35,7 @@ MARKDOWN_MAP: dict[str, str] = {
     "4.Revision_Copula_SPH_LSTM.md": "revision-copula-sph-lstm.md",
     "5.StatsStudyLog.md": "stats-study-log.md",
     "6.StatsProblemsDay1.md": "stats-problems-day1.md",
+    "7.StatsProblemsDay2.md": "stats-problems-day2.md",
 }
 
 # Deliberately NOT published:
@@ -49,6 +50,7 @@ HTML_MAP: dict[str, str] = {
     "CCH_literature_roadmap.html": "interactive/literature-roadmap.html",
     "CCH_study_workflow_plan.html": "interactive/study-workflow.html",
     "Skewness_and_Tails_interactive.html": "interactive/skewness-and-tails.html",
+    "Probability_and_Copulas_interactive.html": "interactive/probability-and-copulas.html",
 }
 
 
@@ -211,6 +213,15 @@ def write_interactive_index(published: list[str]) -> None:
             "Five live panels on distribution shape: the two shapes, the return-period "
             "divergence, a simulated century of record, the rank transform, and the "
             "Gaussian-vs-Gumbel corner. Companion to the Statistics Study Log.",
+        ),
+        "interactive/probability-and-copulas.html": (
+            "From a 2×2 Table to a Copula",
+            "Six live panels taking marginal, joint and conditional probability from a "
+            "contingency table through to upper-tail dependence and joint return "
+            "periods: the Fréchet interval, the probability integral transform, "
+            "Sklar's decomposition on separate controls, four families in the corner, "
+            "and what independence costs a cascade. Companion to the Statistics "
+            "Study Log.",
         ),
     }
 

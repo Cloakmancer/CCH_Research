@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>From a 2×2 table to a copula</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0:#f4f4f1;
+    --surface-1:#fcfcfb;
+    --surface-2:#eceae4;
+    --line:#dcdad2;
+    --text-primary:#0b0b0b;
+    --text-secondary:#52514e;
+    --text-muted:#75736c;
+    --series-1:#2a78d6;   /* independence / the Gaussian copula — "what we assumed" */
+    --series-2:#eb6834;   /* the observed table / Gumbel — "what happens" */
+    --series-3:#1baf7a;   /* Clayton, and third margins */
+    --series-4:#eda100;
+    --series-1-soft:#2a78d61f;
+    --series-2-soft:#eb68341f;
+    --grid:#e6e4dc;
+    --accent-rule:#75736c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-0:#121211;
+      --surface-1:#1a1a19;
+      --surface-2:#232322;
+      --line:#383834;
+      --text-primary:#ffffff;
+      --text-secondary:#c3c2b7;
+      --text-muted:#9a998f;
+      --series-1:#3987e5;
+      --series-2:#d95926;
+      --series-3:#23c78a;
+      --series-4:#f0b02a;
+      --series-1-soft:#3987e529;
+      --series-2-soft:#d9592629;
+      --grid:#2c2c2a;
+      --accent-rule:#9a998f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0:#121211; --surface-1:#1a1a19; --surface-2:#232322; --line:#383834;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#9a998f;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#23c78a; --series-4:#f0b02a;
+    --series-1-soft:#3987e529; --series-2-soft:#d9592629;
+    --grid:#2c2c2a; --accent-rule:#9a998f;
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+         background:var(--surface-0); color:var(--text-primary);
+         padding:26px 20px 60px; font-size:14px; line-height:1.6; }
+  .wrap { max-width:1000px; margin:0 auto; }
+
+  header { margin-bottom:26px; }
+  h1 { font-size:23px; font-weight:700; line-height:1.25; letter-spacing:-.01em; }
+  .sub { font-size:13.5px; color:var(--text-secondary); margin-top:8px; max-width:70ch; }
+  .kicker { font-size:10.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+            color:var(--text-muted); margin-bottom:7px; }
+
+  section.card { background:var(--surface-1); border:1px solid var(--line);
+                 border-radius:12px; padding:20px 22px 22px; margin-bottom:20px; }
+  h2 { font-size:17px; font-weight:650; letter-spacing:-.005em; margin-bottom:3px; }
+  h2 .num { color:var(--text-muted); font-weight:600; margin-right:8px; }
+  .lede { font-size:13.2px; color:var(--text-secondary); max-width:74ch; margin-bottom:16px; }
+  p { font-size:13.2px; margin-bottom:9px; max-width:74ch; }
+  .say { background:var(--surface-2); border-left:3px solid var(--series-2);
+         border-radius:0 8px 8px 0; padding:11px 14px; margin:14px 0 4px;
+         font-size:13.2px; max-width:74ch; }
+  .say b { font-weight:650; }
+  em.q { font-style:normal; color:var(--text-primary); font-weight:600; }
+
+  /* --- controls ------------------------------------------------------- */
+  .controls { display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end;
+              margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line); }
+  .ctl { display:flex; flex-direction:column; gap:5px; min-width:230px; flex:1 1 230px; }
+  .ctl label { font-size:11px; font-weight:650; letter-spacing:.03em; color:var(--text-secondary);
+               text-transform:uppercase; }
+  .ctl .val { font-variant-numeric:tabular-nums; color:var(--text-primary); font-weight:600;
+              text-transform:none; letter-spacing:0; }
+  input[type=range] { width:100%; accent-color:var(--series-2); height:22px; cursor:grab; }
+  button.ctl-btn { font:inherit; font-size:12.5px; font-weight:600; padding:8px 16px;
+                   border:1px solid var(--line); background:var(--surface-2);
+                   color:var(--text-primary); border-radius:8px; cursor:pointer;
+                   transition:background .13s; }
+  button.ctl-btn:hover { background:var(--line); }
+  button.ctl-btn[aria-pressed="true"] { background:var(--series-2); color:#fff;
+                                        border-color:var(--series-2); }
+  .seg { display:flex; gap:6px; flex-wrap:wrap; }
+
+  /* --- chart shell ---------------------------------------------------- */
+  figure { margin:0; }
+  .chart { width:100%; position:relative; }
+  .chart svg { width:100%; height:auto; display:block; overflow:visible; touch-action:none; }
+  figcaption { font-size:11.8px; color:var(--text-muted); margin-top:9px; max-width:74ch; }
+  .legend { display:flex; flex-wrap:wrap; gap:16px; margin:2px 0 10px; font-size:12px;
+            color:var(--text-secondary); }
+  .legend span { display:flex; align-items:center; gap:6px; }
+  .swatch { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+  .swatch.line { height:3px; border-radius:2px; }
+
+  text { font-family:inherit; }
+  .ax-label { font-size:11px; fill:var(--text-muted); font-weight:500; }
+  .ax-title { font-size:11px; fill:var(--text-secondary); font-weight:650;
+              letter-spacing:.03em; text-transform:uppercase; }
+  .gridline { stroke:var(--grid); stroke-width:1; }
+  .axisline { stroke:var(--line); stroke-width:1; }
+  .mark-label { font-size:11.5px; font-weight:650; }
+  .cell-n { font-size:15px; font-weight:700; }
+  .cell-p { font-size:11.5px; }
+
+  .tip { position:absolute; pointer-events:none; opacity:0; transition:opacity .1s;
+         background:var(--surface-1); border:1px solid var(--line); border-radius:8px;
+         padding:8px 11px; font-size:12px; line-height:1.5; white-space:nowrap;
+         box-shadow:0 4px 16px rgba(0,0,0,.14); z-index:5; }
+  .tip .th { font-weight:650; margin-bottom:4px; }
+  .tip .row { display:flex; align-items:center; gap:7px; }
+  .tip .row .k { color:var(--text-secondary); }
+  .tip .row .v { margin-left:auto; font-variant-numeric:tabular-nums; font-weight:600;
+                 padding-left:14px; }
+
+  /* --- stat tiles ----------------------------------------------------- */
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+           gap:12px; margin:16px 0 4px; }
+  .tile { background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
+          padding:13px 15px; }
+  .tile .t-lab { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+                 color:var(--text-muted); display:flex; align-items:center; gap:6px; }
+  .tile .t-val { font-size:26px; font-weight:700; letter-spacing:-.02em; margin-top:6px;
+                 font-variant-numeric:tabular-nums; line-height:1.1; }
+  .tile .t-sub { font-size:11.5px; color:var(--text-secondary); margin-top:3px; }
+  .tile.hero { background:var(--series-2-soft); border-color:var(--series-2); }
+  .tile.hero .t-val { color:var(--series-2); font-size:30px; }
+
+  table { border-collapse:collapse; width:100%; max-width:660px; font-size:12.5px;
+          margin:14px 0 4px; }
+  th, td { text-align:left; padding:7px 11px; border-bottom:1px solid var(--line); }
+  th { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted);
+       font-weight:700; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tbody tr:last-child td { border-bottom:none; }
+  details { margin-top:12px; }
+  summary { font-size:12px; color:var(--text-secondary); cursor:pointer; font-weight:600; }
+
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:720px) { .split { grid-template-columns:1fr; } h1 { font-size:20px; } }
+
+  footer { font-size:12px; color:var(--text-muted); border-top:1px solid var(--line);
+           padding-top:14px; margin-top:26px; }
+  footer a { color:var(--series-1); text-decoration:none; }
+  footer a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Statistics study · Day 2 · Joint, marginal and conditional probability</div>
+  <h1>From a 2×2 table to a copula</h1>
+  <p class="sub">Six things to play with. They start with counting days in a contingency table
+  and finish with the number that decides a compound cascading hazard — and the claim of this
+  page is that those two things are the <em>same</em> object, met twice. Drag the sliders; every
+  number on screen is recomputed, none is stored.</p>
+</header>
+
+<!-- ============================================================ 1 -->
+<section class="card">
+  <h2><span class="num">1</span>Marginal, joint, conditional — all in one table</h2>
+  <p class="lede">500 monsoon days at a catchment, each classified two ways: was the rainfall
+  <b>heavy</b> (top decile), and was the soil already <b>saturated</b>? Four counts. Everything
+  in elementary probability is a way of reading them. The slider moves the <em>association</em>
+  between the two — watch which numbers move and, more importantly, which do not.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:1 1 340px">
+      <label>Days that were both heavy-rain and saturated <span class="val" id="n11-val"></span></label>
+      <input type="range" id="n11" min="0" max="50" value="32">
+    </div>
+    <button class="ctl-btn" id="to-indep">Snap to independence</button>
+    <button class="ctl-btn" id="to-obs">Back to observed</button>
+  </div>
+
+  <figure>
+    <div class="chart" id="c1"></div>
+    <figcaption>Area = probability. Column widths are P(R) and P(not R); the split inside each
+    column is the conditional probability of saturation given that column.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Marginal P(R)</div><div class="t-val" id="t-pr"></div>
+      <div class="t-sub">read off the bottom edge — <b id="fix1">fixed</b></div></div>
+    <div class="tile"><div class="t-lab">Marginal P(S)</div><div class="t-val" id="t-ps"></div>
+      <div class="t-sub">read off the side edge — <b id="fix2">fixed</b></div></div>
+    <div class="tile"><div class="t-lab">Joint P(R ∩ S)</div><div class="t-val" id="t-prs"></div>
+      <div class="t-sub">one cell, divided by 500</div></div>
+    <div class="tile hero"><div class="t-lab">Conditional P(S | R)</div>
+      <div class="t-val" id="t-psr"></div>
+      <div class="t-sub">of the rainy days only</div></div>
+  </div>
+
+  <div class="say"><b>The move worth noticing:</b> drag the slider and the two
+  <em class="q">marginal</em> tiles never budge. P(R) is always 0.10 and P(S) is always 0.30,
+  because the row and column totals are held fixed. Only the <em class="q">joint</em> cell moves —
+  and every conditional probability moves with it. So a 2×2 table with fixed margins has exactly
+  <b>one</b> free number, and that number is the entire content of "how are these two related".
+  Hold that thought: it is a copula, in the only case small enough to see all at once.</div>
+
+  <details>
+    <summary>Show the full table</summary>
+    <table>
+      <thead><tr><th></th><th class="num">Saturated</th><th class="num">Not saturated</th>
+        <th class="num">Total</th></tr></thead>
+      <tbody id="tbl1"></tbody>
+    </table>
+  </details>
+</section>
+
+<!-- ============================================================ 2 -->
+<section class="card">
+  <h2><span class="num">2</span>Independence is a special case, not the default</h2>
+  <p class="lede">The multiplication rule <b>P(A ∩ B) = P(A) · P(B | A)</b> is always true — it is
+  the definition of a conditional probability, rearranged. The independence rule
+  <b>P(A ∩ B) = P(A) · P(B)</b> is true only when P(B | A) happens to equal P(B). One of these is
+  a law; the other is an assumption you are making about the world.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:1 1 340px">
+      <label>Association, same slider as above <span class="val" id="n11b-val"></span></label>
+      <input type="range" id="n11b" min="0" max="50" value="32">
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch line" style="background:var(--series-1)"></i>What independence would require</span>
+    <span><i class="swatch line" style="background:var(--series-2)"></i>What the days actually show</span>
+  </div>
+  <figure>
+    <div class="chart" id="c2"></div>
+    <figcaption>The bar is the admissible range for the joint probability once both margins are
+    fixed — the Fréchet–Hoeffding bounds. Independence is one point on it, not the middle.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">P(S)</div><div class="t-val" id="t2-ps"></div>
+      <div class="t-sub">knowing nothing about the rain</div></div>
+    <div class="tile"><div class="t-lab">P(S | R)</div><div class="t-val" id="t2-psr"></div>
+      <div class="t-sub">on the days it rained hard</div></div>
+    <div class="tile"><div class="t-lab">P(S | not R)</div><div class="t-val" id="t2-psnr"></div>
+      <div class="t-sub">on all the other days</div></div>
+    <div class="tile hero"><div class="t-lab">Lift</div><div class="t-val" id="t2-lift"></div>
+      <div class="t-sub">P(R ∩ S) ÷ P(R)P(S)</div></div>
+  </div>
+
+  <p style="margin-top:14px"><b>And Bayes is not a new idea.</b> The same joint probability factors
+  two ways — rain first, or saturation first:</p>
+  <div class="say" style="border-left-color:var(--series-1)">
+    P(R) · P(S | R) &nbsp;=&nbsp; <b id="bayes-l"></b> &nbsp;=&nbsp; P(R ∩ S) &nbsp;=&nbsp;
+    <b id="bayes-r"></b> &nbsp;=&nbsp; P(S) · P(R | S)
+    <br><span style="color:var(--text-secondary)">Set the two outer expressions equal, divide, and
+    you have P(R | S) = P(S | R) · P(R) / P(S). That is Bayes' theorem — an <em>algebraic
+    rearrangement</em>, not a separate law about belief.</span>
+  </div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section class="card">
+  <h2><span class="num">3</span>The probability integral transform</h2>
+  <p class="lede">Now the continuous case, and the one trick everything downstream rests on. Take
+  any continuous variable X and push it through <b>its own</b> cdf: U = F(X). The result is
+  Uniform(0,1) — <em>always</em>, whatever shape went in. Pick a margin and watch.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:0 0 auto;min-width:0">
+      <label>Which hazard variable</label>
+      <div class="seg" id="pit-seg">
+        <button class="ctl-btn" data-m="0" aria-pressed="true">Peak — log-normal</button>
+        <button class="ctl-btn" data-m="1" aria-pressed="false">Volume — Gamma</button>
+        <button class="ctl-btn" data-m="2" aria-pressed="false">Soil moisture — Beta</button>
+      </div>
+    </div>
+    <div class="ctl" style="flex:1 1 300px">
+      <label>Read off one value <span class="val" id="pit-x-val"></span></label>
+      <input type="range" id="pit-x" min="1" max="999" value="620">
+    </div>
+  </div>
+
+  <div class="split">
+    <figure>
+      <div class="chart" id="c3a"></div>
+      <figcaption>The variable in its own units, with its cdf climbing behind it.</figcaption>
+    </figure>
+    <figure>
+      <div class="chart" id="c3b"></div>
+      <figcaption>The same 4,000 draws after U = F(X). Flat, every time.</figcaption>
+    </figure>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Your value x</div><div class="t-val" id="t3-x"></div>
+      <div class="t-sub" id="t3-unit"></div></div>
+    <div class="tile hero"><div class="t-lab">u = F(x)</div><div class="t-val" id="t3-u"></div>
+      <div class="t-sub">its percentile — dimensionless</div></div>
+    <div class="tile"><div class="t-lab">Exceeded once in</div><div class="t-val" id="t3-T"></div>
+      <div class="t-sub">years, if these are annual maxima</div></div>
+  </div>
+
+  <div class="say"><b>Why this is the load-bearing step:</b> the three margins have nothing in
+  common — different families, different units, different skew, one of them bounded on both sides.
+  After each passes through its own cdf they are <em class="q">indistinguishable</em>. That is what
+  "map marginal CDFs to copula input structure" means, and it is the reason a copula can put
+  rainfall in millimetres, discharge in m³/s and soil saturation as a bare fraction into the same
+  model without any of them needing the same shape. The price is stated in Panel 6.</div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section class="card">
+  <h2><span class="num">4</span>Sklar: the margins and the dependence come apart</h2>
+  <p class="lede">Sklar's theorem says any joint distribution splits into <b>margins</b> and a
+  <b>copula</b>, and that the two can be chosen independently:
+  F(q,v) = C(F<sub>Q</sub>(q), F<sub>V</sub>(v)). The claim is easier to believe when you can
+  change one and watch the other refuse to move. Change either control below.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:0 0 auto;min-width:0">
+      <label>Margins</label>
+      <div class="seg" id="sk-marg">
+        <button class="ctl-btn" data-v="0" aria-pressed="true">log-normal × Gamma</button>
+        <button class="ctl-btn" data-v="1" aria-pressed="false">exponential × Beta</button>
+      </div>
+    </div>
+    <div class="ctl" style="flex:0 0 auto;min-width:0">
+      <label>Copula</label>
+      <div class="seg" id="sk-cop">
+        <button class="ctl-btn" data-v="0" aria-pressed="true">Gumbel</button>
+        <button class="ctl-btn" data-v="1" aria-pressed="false">Gaussian</button>
+        <button class="ctl-btn" data-v="2" aria-pressed="false">Independence</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="split">
+    <figure>
+      <div class="chart" id="c4a"></div>
+      <figcaption>In physical units — what a gauge records.</figcaption>
+    </figure>
+    <figure>
+      <div class="chart" id="c4b"></div>
+      <figcaption>On the unit square — what the copula is.</figcaption>
+    </figure>
+  </div>
+
+  <div class="say"><b>Watch the two controls do different things.</b> Switch the <em class="q">margins</em>
+  and the left panel distorts beyond recognition while the right panel does not move a single point —
+  the ranks are untouched, so the copula cannot tell. Switch the <em class="q">copula</em> and
+  <b>both</b> panels change, because the dependence structure is genuinely different data. That
+  asymmetry is Sklar's theorem, and it is why this project can argue about GEV-versus-LP3 and about
+  Gumbel-versus-Gaussian as two separate arguments instead of one tangled one.</div>
+</section>
+
+<!-- ============================================================ 5 -->
+<section class="card">
+  <h2><span class="num">5</span>The conditional probability that decides a cascade</h2>
+  <p class="lede">Back to Panel 1's conditional probability, now asked of the extreme corner:
+  <em class="q">given that the peak is above the u-th percentile, how likely is the volume to be
+  above it too?</em> All four families below are fitted to the <b>same</b> Kendall's τ = 0.5 —
+  identical average association. Drag u toward 1 and they give four different answers.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:1 1 340px">
+      <label>"Extreme" means above <span class="val" id="cut-val"></span></label>
+      <input type="range" id="cut" min="500" max="995" value="900">
+    </div>
+    <button class="ctl-btn" id="resample">Resample events</button>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch line" style="background:var(--series-2)"></i>Gumbel — upper-tail dependent</span>
+    <span><i class="swatch line" style="background:var(--series-1)"></i>Gaussian — λ<sub>U</sub> = 0</span>
+    <span><i class="swatch line" style="background:var(--series-3)"></i>Clayton — dependent in the <em>lower</em> tail</span>
+    <span><i class="swatch line" style="background:var(--accent-rule)"></i>Independence</span>
+  </div>
+  <figure>
+    <div class="chart" id="c5"></div>
+    <figcaption>P(U₂ &gt; u | U₁ &gt; u) against u. The vertical rule is your cutoff. Exact curves,
+    not simulated.</figcaption>
+  </figure>
+
+  <div class="split" style="margin-top:16px">
+    <figure>
+      <div class="chart" id="c5a"></div>
+      <figcaption>Gaussian copula — the corner empties out.</figcaption>
+    </figure>
+    <figure>
+      <div class="chart" id="c5b"></div>
+      <figcaption>Gumbel copula — the corner stays populated.</figcaption>
+    </figure>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Gumbel</div><div class="t-val" id="t5-gum"></div>
+      <div class="t-sub">→ λ<sub>U</sub> = 2 − √2 = 0.586</div></div>
+    <div class="tile"><div class="t-lab">Gaussian</div><div class="t-val" id="t5-gau"></div>
+      <div class="t-sub">→ 0, but slowly enough to hide</div></div>
+    <div class="tile"><div class="t-lab">Clayton</div><div class="t-val" id="t5-cla"></div>
+      <div class="t-sub">→ 0; its λ = 0.707 is in the <em>other</em> corner</div></div>
+    <div class="tile hero"><div class="t-lab">Missed by Gaussian</div><div class="t-val" id="t5-miss"></div>
+      <div class="t-sub">of Gumbel's joint extremes</div></div>
+  </div>
+
+  <div class="say"><b>This is P(B | A) from Panel 1, evaluated in the tail.</b> Nothing new has been
+  introduced — the same conditional probability, the same definition, asked at the edge of the
+  distribution instead of the middle. λ<sub>U</sub> is its limit as u → 1. And note Clayton: it has
+  <em>strong</em> tail dependence, worth 0.707, but in the lower corner, where two variables being
+  simultaneously <b>small</b> is what binds. For a drought study that is the right family. For a
+  flood cascade it is as wrong as the Gaussian, and wrong in a way that a τ of 0.5 conceals
+  completely.</div>
+</section>
+
+<!-- ============================================================ 6 -->
+<section class="card">
+  <h2><span class="num">6</span>What it costs — AND, OR, and the chain</h2>
+  <p class="lede">The payoff. Once there are two variables, "the 100-year event" stops being a
+  single number, because there are two different failures you might mean. And once there are three
+  links, the choice of dependence model is worth three orders of magnitude.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:1 1 300px">
+      <label>Each variable at its <span class="val" id="u6-val"></span> percentile</label>
+      <input type="range" id="u6" min="800" max="995" value="990">
+    </div>
+    <div class="ctl" style="flex:0 0 auto;min-width:0">
+      <label>Dependence model</label>
+      <div class="seg" id="fam6">
+        <button class="ctl-btn" data-v="0" aria-pressed="true">Gumbel</button>
+        <button class="ctl-btn" data-v="1" aria-pressed="false">Gaussian</button>
+        <button class="ctl-btn" data-v="3" aria-pressed="false">Independence</button>
+      </div>
+    </div>
+  </div>
+
+  <figure>
+    <div class="chart" id="c6"></div>
+    <figcaption>Joint AND return period against u, for all four families. The dot is your
+    setting.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Peak / volume</div><div class="t-val" id="t6-qv"
+      style="font-size:18px"></div><div class="t-sub">the design pair at this u</div></div>
+    <div class="tile"><div class="t-lab">AND — both exceed</div><div class="t-val" id="t6-and"></div>
+      <div class="t-sub">years — the joint failure</div></div>
+    <div class="tile"><div class="t-lab">OR — either exceeds</div><div class="t-val" id="t6-or"></div>
+      <div class="t-sub">years — the single failure</div></div>
+    <div class="tile hero"><div class="t-lab">Independence would say</div>
+      <div class="t-val" id="t6-err"></div>
+      <div class="t-sub">times rarer than your model</div></div>
+  </div>
+
+  <p style="margin-top:14px"><b>AND and OR are not two estimates of one quantity.</b> They are
+  answers to two different engineering questions. A culvert that fails when the <em>peak</em>
+  overtops it, regardless of volume, is an OR problem. A reservoir that fails only when a high peak
+  arrives <em>and</em> the volume is large enough to keep it high is an AND problem. Quoting one
+  when the mechanism is the other is a category error, not a conservatism.</p>
+
+  <div class="say"><b>And now the cascade.</b> Chain three links, each at u = 0.99. Multiply the
+  probabilities as though the links were independent and you get one in a million years. Chain them
+  through λ<sub>U</sub> = 0.586 instead and you get <b>one in 291</b>. The independence assumption
+  is not a little conservative and not a little wrong — it is out by a factor of
+  <b>3,431</b>, and it is wrong in the direction that makes a structure look safe. Every link you
+  add multiplies the error again, which is precisely why a <em>cascading</em> hazard is where this
+  matters and a single-hazard analysis can often get away with it.</div>
+</section>
+
+<!-- ============================================================ summary -->
+<section class="card">
+  <h2>The whole thing in one table</h2>
+  <table style="max-width:100%">
+    <thead><tr><th>Elementary name</th><th>Written</th><th>What it becomes here</th></tr></thead>
+    <tbody>
+      <tr><td><b>Marginal</b></td><td>P(R)</td>
+          <td>The fitted margin F<sub>i</sub> — one per hazard variable, one family each</td></tr>
+      <tr><td><b>Percentile</b></td><td>F(x)</td>
+          <td>The transform u<sub>i</sub> = F<sub>i</sub>(x<sub>i</sub>) that puts every hazard on one scale</td></tr>
+      <tr><td><b>Joint</b></td><td>P(R ∩ S)</td>
+          <td>The copula C(u₁,…,u<sub>n</sub>) — Sklar's decomposition</td></tr>
+      <tr><td><b>Conditional</b></td><td>P(S | R)</td>
+          <td>Upper-tail dependence λ<sub>U</sub> = lim P(U₂ &gt; u | U₁ &gt; u)</td></tr>
+      <tr><td><b>Independence</b></td><td>P(R)P(S)</td>
+          <td>The product copula Π — the null model a cascade must be tested against</td></tr>
+      <tr><td><b>Bayes</b></td><td>P(R|S) = P(S|R)P(R)/P(S)</td>
+          <td>Reversing a cascade link: given the landslide, how extreme was the rain?</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:16px">Six rows, and the left column is a first probability lecture while the
+  right column is this project's method section. That is not an analogy. The right column is what
+  you get by applying the left column to continuous variables and then insisting the marginal shapes
+  be dealt with separately.</p>
+</section>
+
+<footer>
+  Generated for the CCH research notes · companion to the
+  <a href="../stats-study-log/">Statistics Study Log</a> ·
+  all curves exact and all samples drawn live in your browser (τ = 0.5 throughout, so Gumbel θ = 2,
+  Clayton θ = 2, Gaussian ρ = 0.7071; margins are log-normal mean 800 m³/s CV 0.55 for peak and
+  Gamma k = 2.5 scale 104 for volume).
+</footer>
+
+</div>
+
+<script>
+"use strict";
+/* ============================ small maths ============================ */
+// Numerical Recipes erfc — fractional error < 1.2e-7 everywhere. Same reason as
+// the Day 1 page: the usual A&S 7.1.26 loses its footing exactly in the tail
+// where this page makes its argument.
+function erfc(x){
+  const z=Math.abs(x), t=1/(1+0.5*z);
+  const ans=t*Math.exp(-z*z-1.26551223+t*(1.00002368+t*(0.37409196+t*(0.09678418+
+    t*(-0.18628806+t*(0.27886807+t*(-1.13520398+t*(1.48851587+
+    t*(-0.82215223+t*0.17087277)))))))));
+  return x>=0?ans:2-ans;
+}
+const Phi   = x => 0.5*erfc(-x/Math.SQRT2);
+const Qnorm = x => 0.5*erfc(x/Math.SQRT2);
+
+// Acklam's inverse normal cdf. Needed for the Gaussian copula in both
+// directions; refined by one Halley step, which takes it to ~1e-15.
+function Phinv(p){
+  if(p<=0) return -Infinity; if(p>=1) return Infinity;
+  const a=[-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,
+           1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239e+00];
+  const b=[-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,
+           6.680131188771972e+01,-1.328068155288572e+01];
+  const c=[-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838e+00,
+           -2.549732539343734e+00,4.374664141464968e+00,2.938163982698783e+00];
+  const d=[7.784695709041462e-03,3.224671290700398e-01,2.445134137142996e+00,
+           3.754408661907416e+00];
+  const pl=0.02425, ph=1-pl; let q,r,x;
+  if(p<pl){ q=Math.sqrt(-2*Math.log(p));
+    x=(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/
+      ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  else if(p<=ph){ q=p-0.5; r=q*q;
+    x=(((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/
+      (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1); }
+  else { q=Math.sqrt(-2*Math.log(1-p));
+    x=-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/
+       ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  const e=Phi(x)-p, uu=e*Math.sqrt(2*Math.PI)*Math.exp(x*x/2);
+  return x-uu/(1+x*uu/2);
+}
+
+// Deterministic RNG so a reload shows the same picture until a new draw is
+// asked for. A chart that reshuffles on every repaint cannot be discussed.
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+let rng = mulberry32(20260729);
+function gauss(){ let u=0,v=0; while(u===0)u=rng(); while(v===0)v=rng();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+
+/* ---- margins ------------------------------------------------------- */
+// Peak Q keeps Day 1's exact log-normal so the two pages describe one river.
+const MEANQ=800, CVQ=0.55, S2=Math.log(1+CVQ*CVQ),
+      SIGQ=Math.sqrt(S2), MUQ=Math.log(MEANQ)-S2/2;
+const KV=2.5, THV=104;                       // volume: Gamma, a different family
+
+const lnCdf = x => x<=0?0:Phi((Math.log(x)-MUQ)/SIGQ);
+const lnPdf = x => x<=0?0:Math.exp(-Math.pow(Math.log(x)-MUQ,2)/(2*SIGQ*SIGQ))/
+                          (x*SIGQ*Math.sqrt(2*Math.PI));
+const lnInv = u => Math.exp(MUQ+SIGQ*Phinv(u));
+
+// Lower incomplete gamma by series / continued fraction (Numerical Recipes).
+function gammaln(x){
+  const c=[76.18009172947146,-86.50532032941677,24.01409824083091,
+           -1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let y=x, tmp=x+5.5; tmp-=(x+0.5)*Math.log(tmp);
+  let ser=1.000000000190015;
+  for(let j=0;j<6;j++) ser+=c[j]/++y;
+  return -tmp+Math.log(2.5066282746310005*ser/x);
+}
+function gammaP(a,x){
+  if(x<=0) return 0;
+  if(x<a+1){                                   // series
+    let ap=a, sum=1/a, del=sum;
+    for(let n=0;n<200;n++){ ap++; del*=x/ap; sum+=del;
+      if(Math.abs(del)<Math.abs(sum)*1e-14) break; }
+    return sum*Math.exp(-x+a*Math.log(x)-gammaln(a));
+  }
+  let b=x+1-a, c=1e300, d=1/b, h=d;            // continued fraction
+  for(let i=1;i<=200;i++){
+    const an=-i*(i-a); b+=2; d=an*d+b; if(Math.abs(d)<1e-300)d=1e-300;
+    c=b+an/c; if(Math.abs(c)<1e-300)c=1e-300;
+    d=1/d; const del=d*c; h*=del;
+    if(Math.abs(del-1)<1e-14) break;
+  }
+  return 1-Math.exp(-x+a*Math.log(x)-gammaln(a))*h;
+}
+const gmCdf = v => v<=0?0:gammaP(KV,v/THV);
+const gmPdf = v => v<=0?0:Math.pow(v/THV,KV-1)*Math.exp(-v/THV-gammaln(KV))/THV;
+
+// Neither Gamma nor Beta has a closed-form inverse. Bisecting the cdf works but
+// costs ~80 cdf evaluations per call, and Panel 4 needs 1,400 of them per
+// redraw — enough to lock the tab for seconds when the margins are switched.
+// Tabulate the cdf once on a grid and interpolate instead: built in one pass,
+// then every later lookup is two array reads.
+function tabulateInv(cdf,lo,hi,n){
+  const xs=new Float64Array(n+1), ps=new Float64Array(n+1);
+  for(let i=0;i<=n;i++){ xs[i]=lo+(hi-lo)*i/n; ps[i]=cdf(xs[i]); }
+  return function(u){
+    if(u<=ps[0]) return xs[0];
+    if(u>=ps[n]) return xs[n];
+    let a=0,b=n;                        // ps is non-decreasing, so bisect on it
+    while(b-a>1){ const m=(a+b)>>1; if(ps[m]<=u) a=m; else b=m; }
+    const d=ps[b]-ps[a];
+    return d>0 ? xs[a]+(xs[b]-xs[a])*(u-ps[a])/d : xs[a];
+  };
+}
+
+function betaPdf(x,a,b){
+  if(x<=0||x>=1) return 0;
+  return Math.exp((a-1)*Math.log(x)+(b-1)*Math.log(1-x)
+                  +gammaln(a+b)-gammaln(a)-gammaln(b));
+}
+// Cumulative once, not from-zero on every call. Integrating 0→x per evaluation
+// cost 52 ms per frame while dragging the slider on this margin; accumulating
+// the same trapezoid rule along a single fixed grid makes each lookup O(log n).
+function cumulativeCdf(pdf,lo,hi,n){
+  const xs=new Float64Array(n+1), ps=new Float64Array(n+1);
+  const h=(hi-lo)/n;
+  let acc=0, prev=pdf(Math.min(Math.max(lo,1e-12),1-1e-12));
+  xs[0]=lo; ps[0]=0;
+  for(let i=1;i<=n;i++){
+    const x=lo+h*i, cur=pdf(Math.min(Math.max(x,1e-12),1-1e-12));
+    acc+=(prev+cur)/2*h; prev=cur;
+    xs[i]=x; ps[i]=acc;
+  }
+  const tot=ps[n];
+  for(let i=0;i<=n;i++) ps[i]/=tot;      // renormalise away the quadrature error
+  return function(x){
+    if(x<=lo) return 0; if(x>=hi) return 1;
+    let a=0,b=n;
+    while(b-a>1){ const m=(a+b)>>1; if(xs[m]<=x) a=m; else b=m; }
+    const d=xs[b]-xs[a];
+    return d>0 ? ps[a]+(ps[b]-ps[a])*(x-xs[a])/d : ps[a];
+  };
+}
+const beCdf = cumulativeCdf(x=>betaPdf(x,5,1.6),0,1,4000);
+const bePdf = x => betaPdf(x,5,1.6);
+const exInv = u => -3*Math.log(1-u);
+
+const gmInv = tabulateInv(gmCdf,0,4000,3000);
+const beInv = tabulateInv(beCdf,0,1,2000);
+
+// Direct samplers, used by Panel 3. The point of that panel is that F(X) comes
+// out uniform; drawing X as F⁻¹(uniform) and then applying F would make the
+// histogram flat by construction of the code rather than by the theorem, which
+// would be a demonstration of nothing. So each variable is generated by a route
+// that never touches its own cdf.
+function gammaSample(k,scale){          // Marsaglia–Tsang
+  if(k<1){ const u=rng(); return gammaSample(1+k,scale)*Math.pow(u,1/k); }
+  const d=k-1/3, c=1/Math.sqrt(9*d);
+  for(;;){
+    let x,v;
+    do { x=gauss(); v=1+c*x; } while(v<=0);
+    v=v*v*v;
+    const u=rng();
+    if(u<1-0.0331*x*x*x*x) return d*v*scale;
+    if(Math.log(u)<0.5*x*x+d*(1-v+Math.log(v))) return d*v*scale;
+  }
+}
+const SAMPLERS = [
+  () => Math.exp(MUQ+SIGQ*gauss()),                       // log-normal
+  () => gammaSample(KV,THV),                              // Gamma
+  () => { const a=gammaSample(5,1), b=gammaSample(1.6,1); // Beta(5, 1.6)
+          return a/(a+b); },
+];
+
+const MARGINS = [
+  {name:"Peak discharge",   unit:"m³/s", lo:1,    hi:3000,
+   pdf:lnPdf, cdf:lnCdf, inv:lnInv, col:"var(--series-2)"},
+  {name:"Flood volume",     unit:"Mm³",  lo:1,    hi:900,
+   pdf:gmPdf, cdf:gmCdf, inv:gmInv, col:"var(--series-3)"},
+  {name:"Soil moisture",    unit:"",     lo:0.002,hi:0.998,
+   pdf:bePdf, cdf:beCdf, inv:beInv, col:"var(--series-1)"},
+];
+
+/* ---- copulas ------------------------------------------------------- */
+const TAU=0.5, TH_G=1/(1-TAU), TH_C=2*TAU/(1-TAU), RHO=Math.sin(Math.PI*TAU/2);
+const LAM_U=2-Math.pow(2,1/TH_G);
+
+// Bivariate standard normal cdf — Drezner–Wesolowsky 8-point Gauss–Legendre on
+// the correlation integral. Accurate to ~1e-10 and, unlike a lattice sum, does
+// not degrade as the evaluation point runs into the corner.
+const _GL_X=[0.0950125098,0.2816035507,0.4580167776,0.6178762444,
+             0.7554044083,0.8656312023,0.9445750230,0.9894009349];
+const _GL_W=[0.1894506104,0.1826034150,0.1691565193,0.1495959888,
+             0.1246289712,0.0951585116,0.0622535239,0.0271524594];
+function bvnCdf(h,k,r){
+  if(r===0) return Phi(h)*Phi(k);
+  let s=0;
+  for(let i=0;i<8;i++){
+    for(const sgn of [-1,1]){
+      const t=r/2*(1+sgn*_GL_X[i]);
+      const d=1-t*t;
+      s+=_GL_W[i]*r/2*Math.exp(-(h*h+k*k-2*t*h*k)/(2*d))/(2*Math.PI*Math.sqrt(d));
+    }
+  }
+  return Phi(h)*Phi(k)+s;
+}
+const C_GUM = (u,v) => Math.exp(-Math.pow(Math.pow(-Math.log(u),TH_G)+
+                                          Math.pow(-Math.log(v),TH_G),1/TH_G));
+const C_CLA = (u,v) => Math.pow(Math.pow(u,-TH_C)+Math.pow(v,-TH_C)-1,-1/TH_C);
+const C_GAU = (u,v) => bvnCdf(Phinv(u),Phinv(v),RHO);
+const C_IND = (u,v) => u*v;
+const COPULAS = [
+  {name:"Gumbel",       C:C_GUM, col:"var(--series-2)"},
+  {name:"Gaussian",     C:C_GAU, col:"var(--series-1)"},
+  {name:"Clayton",      C:C_CLA, col:"var(--series-3)"},
+  {name:"Independence", C:C_IND, col:"var(--accent-rule)"},
+];
+const condP = (C,u) => (1-2*u+C(u,u))/(1-u);
+
+// Samplers. Gumbel and Clayton both go through Marshall–Olkin with the right
+// frailty; the Gumbel one needs a positive-stable draw (Chambers–Mallows–Stuck).
+function sampleGumbel(n){
+  const a=1/TH_G, x=new Float64Array(n), y=new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const U=Math.PI*rng(), W=-Math.log(rng());
+    const S=Math.sin(a*U)/Math.pow(Math.sin(U),1/a)*
+            Math.pow(Math.sin((1-a)*U)/W,(1-a)/a);
+    x[i]=Math.exp(-Math.pow(-Math.log(rng())/S,a));
+    y[i]=Math.exp(-Math.pow(-Math.log(rng())/S,a));
+  }
+  return [x,y];
+}
+function sampleGaussian(n){
+  const x=new Float64Array(n), y=new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const z1=gauss(), z2=RHO*z1+Math.sqrt(1-RHO*RHO)*gauss();
+    x[i]=Phi(z1); y[i]=Phi(z2);
+  }
+  return [x,y];
+}
+function sampleIndep(n){
+  const x=new Float64Array(n), y=new Float64Array(n);
+  for(let i=0;i<n;i++){ x[i]=rng(); y[i]=rng(); }
+  return [x,y];
+}
+
+/* ---- formatting ---------------------------------------------------- */
+const fmt  = n => Math.round(n).toLocaleString("en-US");
+const fmtT = t => {
+  if(!isFinite(t)||t>=1e9) return "over a billion";
+  if(t>=1e6) return (t/1e6).toPrecision(3)+"M";
+  if(t>=1e4) return fmt(Math.round(t/100)*100);
+  if(t>=100) return fmt(Math.round(t));
+  return t.toFixed(1);
+};
+const fmtX = r => {
+  if(!isFinite(r)) return "∞";
+  if(r>=1000) return (r/1000).toPrecision(2)+"k×";
+  if(r>=10)   return Math.round(r)+"×";
+  return r.toFixed(1)+"×";
+};
+
+/* ============================ svg helpers ============================ */
+const NS="http://www.w3.org/2000/svg";
+function E(tag,attrs,parent){
+  const n=document.createElementNS(NS,tag);
+  for(const k in attrs) n.setAttribute(k,attrs[k]);
+  if(parent) parent.appendChild(n);
+  return n;
+}
+function svgIn(host,w,h){
+  host.innerHTML="";
+  const s=E("svg",{viewBox:`0 0 ${w} ${h}`,role:"img"},host);
+  return s;
+}
+function tipFor(host){
+  const d=document.createElement("div"); d.className="tip"; host.appendChild(d); return d;
+}
+function showTip(tip,host,x,y,html){
+  tip.innerHTML=html; tip.style.opacity=1;
+  const hw=host.clientWidth, tw=tip.offsetWidth;
+  let left=x+14; if(left+tw>hw) left=x-tw-14;
+  tip.style.left=Math.max(0,left)+"px"; tip.style.top=(y-10)+"px";
+}
+const toPx = (host,vx,W) => vx*host.clientWidth/W;
+function draggable(svg,host,W,x0,x1,px0,px1,onMove){
+  let down=false;
+  const val = ev => {
+    const r=host.getBoundingClientRect();
+    const vx=(ev.clientX-r.left)*W/r.width;
+    const t=Math.min(1,Math.max(0,(vx-px0)/(px1-px0)));
+    return x0+t*(x1-x0);
+  };
+  svg.style.cursor="ew-resize";
+  svg.addEventListener("pointerdown",e=>{down=true;svg.setPointerCapture(e.pointerId);onMove(val(e));});
+  svg.addEventListener("pointermove",e=>{ if(down) onMove(val(e)); });
+  svg.addEventListener("pointerup",  ()=>{down=false;});
+  svg.addEventListener("pointercancel",()=>{down=false;});
+}
+// Shared "pressed" behaviour for the segmented button groups.
+function segment(id,onPick){
+  const host=document.getElementById(id);
+  host.addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    [...host.querySelectorAll("button")].forEach(x=>
+      x.setAttribute("aria-pressed",String(x===b)));
+    onPick(+(b.dataset.m??b.dataset.v));
+  });
+}
+
+/* ================== 1 · the contingency table ======================= */
+const N_DAYS=500, N_R=50, N_S=150;   // margins, held fixed throughout
+const c1=document.getElementById("c1");
+function cells(n11){
+  return {RS:n11, Rs:N_R-n11, rS:N_S-n11, rs:N_DAYS-N_R-N_S+n11};
+}
+function draw1(){
+  const n11=+document.getElementById("n11").value;
+  const c=cells(n11);
+  document.getElementById("n11-val").textContent=n11+" of 500";
+
+  const W=940,H=340,L=54,R=150,T=26,B=52;
+  const s=svgIn(c1,W,H);
+  const X=p=>L+p*(W-L-R), Y=p=>H-B-p*(H-T-B);
+  const pR=N_R/N_DAYS, pS=N_S/N_DAYS, pRS=c.RS/N_DAYS;
+  const indep = Math.abs(c.RS-pR*pS*N_DAYS)<0.5;
+
+  // columns: R then not-R; inside each, the conditional split
+  const cols=[["R",0,pR,c.RS,c.Rs],["r",pR,1-pR,c.rS,c.rs]];
+  cols.forEach(([key,x0,w,nS,nNot])=>{
+    const share=nS/(nS+nNot);
+    [[share,1-share,"S"],[1-share,0,"s"]].forEach(()=>{});
+    const col = indep ? "var(--series-1)" : "var(--series-2)";
+    E("rect",{x:X(x0),y:Y(1),width:X(w)-X(0),height:Y(1-share)-Y(1),
+              fill:col,opacity:.78,stroke:"var(--surface-1)","stroke-width":2},s);
+    E("rect",{x:X(x0),y:Y(1-share),width:X(w)-X(0),height:Y(0)-Y(1-share),
+              fill:col,opacity:.16,stroke:"var(--surface-1)","stroke-width":2},s);
+    // A band can be driven to zero height at either end of the slider. Label it
+    // anyway and the text escapes the band and lands on the column header or
+    // the axis label, which is what the sweep check caught at 0 and 50.
+    const put=(n,yTop,yBot,dark)=>{
+      if(yBot-yTop<34) return;
+      const yc=(yTop+yBot)/2-4;
+      const g=E("text",{x:X(x0)+(X(w)-X(0))/2,y:yc,"text-anchor":"middle",
+                        fill:dark?"var(--surface-1)":"var(--text-primary)"},s);
+      E("tspan",{x:X(x0)+(X(w)-X(0))/2,dy:0,class:"cell-n"},g).textContent=n;
+      E("tspan",{x:X(x0)+(X(w)-X(0))/2,dy:15,class:"cell-p"},g)
+        .textContent=(n/N_DAYS).toFixed(3);
+    };
+    put(nS,Y(1),Y(1-share),true);
+    put(nNot,Y(1-share),Y(0),false);
+    E("text",{x:X(x0)+(X(w)-X(0))/2,y:H-B+18,class:"ax-label","text-anchor":"middle"},s)
+      .textContent = key==="R" ? "heavy rain" : "no heavy rain";
+    // 16, not 14: at 14 the two lines' boxes just touched.
+    E("text",{x:X(x0)+(X(w)-X(0))/2,y:H-B+34,class:"ax-label","text-anchor":"middle",
+              "font-weight":"650"},s)
+      .textContent = key==="R" ? "P(R) = 0.10" : "0.90";
+    // conditional split, called out at the right of each column
+    E("text",{x:X(x0)+(X(w)-X(0))/2,y:T-8,class:"mark-label","text-anchor":"middle",
+              fill:"var(--text-secondary)"},s)
+      .textContent = (key==="R"?"P(S | R) = ":"P(S | not R) = ")+share.toFixed(3);
+  });
+
+  // the fixed margin, drawn as the frame it is
+  E("line",{x1:X(0),x2:X(1),y1:Y(1-pS),y2:Y(1-pS),stroke:"var(--accent-rule)",
+            "stroke-width":1.6,"stroke-dasharray":"5 4"},s);
+  E("text",{x:X(1)+10,y:Y(1-pS)+4,class:"mark-label",fill:"var(--text-secondary)"},s)
+    .textContent="P(S) = 0.30 — fixed";
+  E("text",{x:X(1)+10,y:Y(1-pS)+20,class:"ax-label"},s)
+    .textContent="whatever the slider does";
+
+  document.getElementById("t-pr").textContent=pR.toFixed(2);
+  document.getElementById("t-ps").textContent=pS.toFixed(2);
+  document.getElementById("t-prs").textContent=pRS.toFixed(3);
+  document.getElementById("t-psr").textContent=(c.RS/N_R).toFixed(3);
+
+  const b=document.getElementById("tbl1"); b.innerHTML="";
+  [["Heavy rain",c.RS,c.Rs,N_R],["No heavy rain",c.rS,c.rs,N_DAYS-N_R],
+   ["Total",N_S,N_DAYS-N_S,N_DAYS]].forEach(r=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${r[0]}</td><td class="num">${r[1]}</td>`+
+                 `<td class="num">${r[2]}</td><td class="num"><b>${r[3]}</b></td>`;
+    b.appendChild(tr);
+  });
+  draw2();
+}
+
+/* ================== 2 · independence and Bayes ====================== */
+const c2=document.getElementById("c2");
+function draw2(){
+  const n11=+document.getElementById("n11b").value;
+  const c=cells(n11);
+  document.getElementById("n11b-val").textContent=n11+" of 500";
+  const pR=N_R/N_DAYS, pS=N_S/N_DAYS, pRS=c.RS/N_DAYS;
+  const lo=Math.max(0,pR+pS-1), hi=Math.min(pR,pS);
+
+  const W=940,H=190,L=60,R=60,T=54,B=64;
+  const s=svgIn(c2,W,H);
+  const X=v=>L+(v-lo)/(hi-lo)*(W-L-R), y=T+34;
+
+  E("line",{x1:X(lo),x2:X(hi),y1:y,y2:y,stroke:"var(--surface-2)",
+            "stroke-width":11,"stroke-linecap":"round"},s);
+  [[lo,"W = 0.000","var(--accent-rule)",1],
+   [hi,"M = 0.100","var(--accent-rule)",1]].forEach(([v,lab,col,side])=>{
+    E("circle",{cx:X(v),cy:y,r:6,fill:col,stroke:"var(--surface-1)","stroke-width":2},s);
+    E("text",{x:X(v),y:y+side*30,class:"ax-label","text-anchor":"middle"},s).textContent=lab;
+  });
+  E("text",{x:X(lo),y:y+46,class:"ax-label","text-anchor":"middle"},s)
+    .textContent="lower bound";
+  E("text",{x:X(hi),y:y+46,class:"ax-label","text-anchor":"middle"},s)
+    .textContent="upper bound";
+
+  // Two fixed rows, always. "Snap to independence" puts these two markers on
+  // the same point, and a single shared row printed the two labels on top of
+  // each other in exactly the state the button exists to show.
+  const ind=pR*pS;
+  E("line",{x1:X(ind),x2:X(ind),y1:y-44,y2:y+11,stroke:"var(--series-1)","stroke-width":2},s);
+  E("text",{x:X(ind),y:y-50,class:"mark-label","text-anchor":"middle",
+            fill:"var(--series-1)"},s).textContent="independence 0.030";
+  E("circle",{cx:X(pRS),cy:y,r:8,fill:"var(--series-2)",stroke:"var(--surface-1)",
+              "stroke-width":2.5},s);
+  E("text",{x:X(pRS),y:y-24,class:"mark-label","text-anchor":"middle",
+            fill:"var(--series-2)"},s).textContent="observed "+pRS.toFixed(3);
+  E("text",{x:L,y:H-12,class:"ax-title"},s)
+    .textContent="P(R ∩ S) — THE ONLY NUMBER THE MARGINS LEAVE FREE";
+
+  const psr=c.RS/N_R, psnr=c.rS/(N_DAYS-N_R);
+  document.getElementById("t2-ps").textContent=pS.toFixed(3);
+  document.getElementById("t2-psr").textContent=psr.toFixed(3);
+  document.getElementById("t2-psnr").textContent=psnr.toFixed(3);
+  document.getElementById("t2-lift").textContent=
+    (ind>0? (pRS/ind).toFixed(2)+"×" : "—");
+  document.getElementById("bayes-l").textContent=
+    `0.10 × ${psr.toFixed(3)} = ${pRS.toFixed(3)}`;
+  document.getElementById("bayes-r").textContent=
+    `${pS.toFixed(2)} × ${(pS>0?c.RS/N_S:0).toFixed(3)} = ${pRS.toFixed(3)}`;
+}
+
+/* ================== 3 · the PIT ===================================== */
+let pitM=0, pitSample=[];
+const c3a=document.getElementById("c3a"), c3b=document.getElementById("c3b");
+function newPitSample(){
+  const m=MARGINS[pitM], draw=SAMPLERS[pitM];
+  pitSample=[]; for(let i=0;i<4000;i++) pitSample.push(m.cdf(draw()));
+}
+function draw3(){
+  const m=MARGINS[pitM];
+  const t=+document.getElementById("pit-x").value/1000;
+  const x=m.lo+(m.hi-m.lo)*t;
+  const u=m.cdf(x);
+  document.getElementById("pit-x-val").textContent =
+    (m.unit? fmt(x)+" "+m.unit : x.toFixed(3));
+
+  // --- left: the density, with the cdf climbing behind it
+  let W=460,H=300,L=46,R=42,T=20,B=48;
+  let s=svgIn(c3a,W,H);
+  const X=v=>L+(v-m.lo)/(m.hi-m.lo)*(W-L-R);
+  let ymax=0; for(let i=0;i<=400;i++) ymax=Math.max(ymax,m.pdf(m.lo+(m.hi-m.lo)*i/400));
+  const Y=d=>H-B-(d/(ymax*1.14))*(H-T-B);
+  const Yc=p=>H-B-p*(H-T-B);
+
+  for(let g=0;g<=4;g++){
+    const yy=T+(H-T-B)*g/4;
+    E("line",{x1:L,x2:W-R,y1:yy,y2:yy,class:"gridline"},s);
+  }
+  let d="",dc="";
+  for(let i=0;i<=400;i++){ const v=m.lo+(m.hi-m.lo)*i/400;
+    d+=(i?"L":"M")+X(v).toFixed(2)+" "+Y(m.pdf(v)).toFixed(2);
+    dc+=(i?"L":"M")+X(v).toFixed(2)+" "+Yc(m.cdf(v)).toFixed(2); }
+  E("path",{d:d+`L${X(m.hi)} ${H-B} L${X(m.lo)} ${H-B} Z`,fill:m.col,opacity:.14},s);
+  E("path",{d:dc,fill:"none",stroke:"var(--accent-rule)","stroke-width":1.6,
+            "stroke-dasharray":"4 3"},s);
+  E("path",{d:d,fill:"none",stroke:m.col,"stroke-width":2.5,"stroke-linejoin":"round"},s);
+  E("line",{x1:X(x),x2:X(x),y1:T,y2:H-B,stroke:"var(--series-2)","stroke-width":1.8},s);
+  E("circle",{cx:X(x),cy:Yc(u),r:5,fill:"var(--series-2)",stroke:"var(--surface-1)",
+              "stroke-width":2},s);
+  E("line",{x1:X(x),x2:W-R,y1:Yc(u),y2:Yc(u),stroke:"var(--series-2)","stroke-width":1.2,
+            "stroke-dasharray":"3 3"},s);
+  E("text",{x:W-R+4,y:Yc(u)+4,class:"mark-label",fill:"var(--series-2)"},s)
+    .textContent=u.toFixed(3);
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  // Ticks in the variable's own units: the whole panel is about a value having
+  // units on the left and none on the right, which needs the units shown.
+  for(let i=0;i<=4;i++){
+    const v=m.lo+(m.hi-m.lo)*i/4;
+    E("text",{x:X(v),y:H-B+17,class:"ax-label","text-anchor":
+              i===0?"start":(i===4?"end":"middle")},s)
+      .textContent = m.unit ? fmt(v) : v.toFixed(2);
+  }
+  E("text",{x:L,y:H-10,class:"ax-title"},s)
+    .textContent=(m.name+(m.unit?" ("+m.unit+")":"")).toUpperCase();
+  // Bottom-right, not top-right: the u readout rides up the right edge as the
+  // slider moves and printed straight over a top-anchored label at high u.
+  E("text",{x:W-R,y:H-B-9,class:"ax-label","text-anchor":"end"},s)
+    .textContent="cdf F(x)";
+
+  // --- right: the transformed sample
+  W=460;H=300;L=46;R=20;T=20;B=48;
+  s=svgIn(c3b,W,H);
+  const NB=20, bins=new Array(NB).fill(0);
+  pitSample.forEach(v=>bins[Math.min(NB-1,Math.floor(v*NB))]++);
+  const bmax=Math.max(...bins)*1.25, bw=(W-L-R)/NB;
+  for(let g=0;g<=4;g++){
+    const yy=T+(H-T-B)*g/4;
+    E("line",{x1:L,x2:W-R,y1:yy,y2:yy,class:"gridline"},s);
+  }
+  const YB=v=>H-B-(v/bmax)*(H-T-B);
+  bins.forEach((v,i)=>{
+    E("rect",{x:L+i*bw+1,y:YB(v),width:bw-2,height:H-B-YB(v),rx:2,
+              fill:m.col,opacity:.55},s);
+  });
+  E("line",{x1:L,x2:W-R,y1:YB(pitSample.length/NB),y2:YB(pitSample.length/NB),
+            stroke:"var(--accent-rule)","stroke-width":1.6,"stroke-dasharray":"5 4"},s);
+  // Left-anchored: the cutoff rule sits at the right for most of the slider's
+  // travel, and an end-anchored label printed underneath it.
+  E("text",{x:L+4,y:YB(pitSample.length/NB)-6,class:"ax-label"},s)
+    .textContent="perfectly flat";
+  E("line",{x1:L+u*(W-L-R),x2:L+u*(W-L-R),y1:T,y2:H-B,stroke:"var(--series-2)",
+            "stroke-width":1.8},s);
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  [0,.25,.5,.75,1].forEach(t2=>
+    E("text",{x:L+t2*(W-L-R),y:H-B+18,class:"ax-label","text-anchor":"middle"},s)
+      .textContent=t2.toFixed(2));
+  E("text",{x:L,y:H-10,class:"ax-title"},s).textContent="U = F(X)  —  UNIFORM(0,1)";
+
+  document.getElementById("t3-x").textContent = m.unit? fmt(x) : x.toFixed(3);
+  document.getElementById("t3-unit").textContent = m.unit || "dimensionless";
+  document.getElementById("t3-u").textContent=u.toFixed(4);
+  document.getElementById("t3-T").textContent = u>=0.9999 ? "> 10,000" : fmtT(1/(1-u));
+}
+
+/* ================== 4 · Sklar ======================================= */
+let skMarg=0, skCop=0, skU=null, skV=null;
+const c4a=document.getElementById("c4a"), c4b=document.getElementById("c4b");
+function newSklar(){
+  const n=1400;
+  const [x,y] = skCop===0?sampleGumbel(n) : skCop===1?sampleGaussian(n) : sampleIndep(n);
+  skU=x; skV=y;
+}
+// Points go on a canvas layer, not into the SVG. A few thousand SVG circles
+// per panel, re-created on every slider input, is enough to make the whole page
+// feel sticky; the axes stay SVG so they remain crisp and selectable.
+function pointLayer(host,W,H){
+  const cw=host.clientWidth||W, k=cw/W, dpr=window.devicePixelRatio||1;
+  const cv=document.createElement("canvas");
+  cv.width=Math.round(cw*dpr); cv.height=Math.round(H*k*dpr);
+  cv.style.cssText=`position:absolute;left:0;top:0;width:${cw}px;height:${H*k}px;
+                    pointer-events:none`;
+  host.appendChild(cv);
+  const ctx=cv.getContext("2d"); ctx.scale(dpr*k,dpr*k);
+  return ctx;
+}
+// CSS custom properties mean nothing to a canvas context; resolve them first.
+function ink(varExpr){
+  const m=/var\((--[\w-]+)\)/.exec(varExpr);
+  if(!m) return varExpr;
+  return getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim()
+         || "#888";
+}
+
+function scatter(host,xs,ys,xlab,ylab,col,unitFmt){
+  const W=460,H=380,L=58,R=18,T=20,B=50;
+  const s=svgIn(host,W,H);
+  const xmax=Math.max(...xs)*1.03, ymax=Math.max(...ys)*1.03;
+  const X=v=>L+v/xmax*(W-L-R), Y=v=>H-B-v/ymax*(H-T-B);
+  for(let g=0;g<=4;g++){
+    E("line",{x1:L,x2:W-R,y1:T+(H-T-B)*g/4,y2:T+(H-T-B)*g/4,class:"gridline"},s);
+    E("line",{x1:L+(W-L-R)*g/4,x2:L+(W-L-R)*g/4,y1:T,y2:H-B,class:"gridline"},s);
+    // First tick left-anchored: centred, it lands under the y-axis zero.
+    E("text",{x:L+(W-L-R)*g/4,y:H-B+17,class:"ax-label",
+              "text-anchor":g===0?"start":"middle"},s)
+      .textContent=unitFmt(xmax*g/4);
+    E("text",{x:L-8,y:H-B-(H-T-B)*g/4+4,class:"ax-label","text-anchor":"end"},s)
+      .textContent=unitFmt(ymax*g/4);
+  }
+  const ctx=pointLayer(host,W,H);
+  ctx.globalAlpha=.42; ctx.fillStyle=ink(col);
+  for(let i=0;i<xs.length;i++){
+    ctx.beginPath(); ctx.arc(X(xs[i]),Y(ys[i]),2.1,0,6.2832); ctx.fill();
+  }
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  E("text",{x:W-R,y:H-8,class:"ax-title","text-anchor":"end"},s).textContent=xlab;
+  E("text",{x:0,y:0,class:"ax-title",transform:`translate(14,${H-B}) rotate(-90)`},s)
+    .textContent=ylab;
+}
+function draw4(){
+  const physX=[],physY=[];
+  for(let i=0;i<skU.length;i++){
+    if(skMarg===0){ physX.push(lnInv(skU[i])); physY.push(gmInv(skV[i])); }
+    else          { physX.push(exInv(skU[i])); physY.push(beInv(skV[i])); }
+  }
+  const col = COPULAS[skCop===2?3:skCop].col;
+  scatter(c4a,physX,physY,
+          skMarg===0?"PEAK Q (m³/s)":"EXPONENTIAL VARIABLE",
+          skMarg===0?"VOLUME V (Mm³)":"BETA VARIABLE",
+          "var(--series-1)", v=>v>=100?fmt(v):v.toFixed(1));
+  scatter(c4b,Array.from(skU),Array.from(skV),"u₁ = F_Q(q)","u₂ = F_V(v)",
+          col, v=>v.toFixed(2));
+}
+
+/* ================== 5 · tail dependence ============================= */
+const c5=document.getElementById("c5");
+const c5a=document.getElementById("c5a"), c5b=document.getElementById("c5b");
+let gauPts=null, gumPts=null;
+function newCorner(){ gauPts=sampleGaussian(4000); gumPts=sampleGumbel(4000); }
+function draw5(){
+  const cut=+document.getElementById("cut").value/1000;
+  document.getElementById("cut-val").textContent="u = "+cut.toFixed(3);
+
+  const W=940,H=360,L=62,R=132,T=22,B=52;
+  const s=svgIn(c5,W,H);
+  const X=u=>L+(u-0.5)/0.5*(W-L-R), Y=p=>H-B-p*(H-T-B);
+  for(let g=0;g<=5;g++){
+    E("line",{x1:L,x2:W-R,y1:Y(g/5),y2:Y(g/5),class:"gridline"},s);
+    E("text",{x:L-9,y:Y(g/5)+4,class:"ax-label","text-anchor":"end"},s)
+      .textContent=(g/5).toFixed(1);
+  }
+  // First tick anchored left and the row dropped a little: centred at x = L it
+  // sat under the "0.0" of the y axis, the same corner clash Day 1 hit.
+  [0.5,0.6,0.7,0.8,0.9,1.0].forEach(v=>
+    E("text",{x:X(v),y:H-B+20,class:"ax-label",
+              "text-anchor":v===0.5?"start":"middle"},s)
+      .textContent=v.toFixed(2));
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  E("text",{x:L,y:H-10,class:"ax-title"},s).textContent="QUANTILE CUTOFF u";
+  E("text",{x:0,y:0,class:"ax-title",transform:`translate(15,${H-B}) rotate(-90)`},s)
+    .textContent="P(U₂ > u | U₁ > u)";
+
+  E("line",{x1:L,x2:W-R,y1:Y(LAM_U),y2:Y(LAM_U),stroke:"var(--series-2)",
+            "stroke-width":1.2,"stroke-dasharray":"3 3"},s);
+
+  // Curves, then labels fanned apart at the right edge: Clayton and
+  // Independence both land on ~0 in this corner and would print on top of
+  // each other.
+  const ends=[];
+  COPULAS.forEach(({name,C,col})=>{
+    let d="";
+    for(let i=0;i<=300;i++){ const u=0.5+0.4995*i/300;
+      d+=(i?"L":"M")+X(u).toFixed(2)+" "+Y(condP(C,u)).toFixed(2); }
+    E("path",{d:d,fill:"none",stroke:col,"stroke-width":2.4,
+              "stroke-linejoin":"round"},s);
+    ends.push({name,col,y:condP(C,0.9995)});
+  });
+  ends.sort((a,b)=>a.y-b.y);
+  let prev=-1;
+  ends.forEach(e=>{ e.ly=Math.max(e.y, prev+0.075); prev=e.ly; });
+  ends.forEach(e=>{
+    if(Math.abs(e.ly-e.y)>1e-9)
+      E("line",{x1:X(0.9995),x2:W-R+16,y1:Y(e.y),y2:Y(e.ly),stroke:e.col,
+                "stroke-width":.9,opacity:.55},s);
+    E("text",{x:W-R+20,y:Y(e.ly)+4,class:"mark-label",fill:e.col},s).textContent=e.name;
+  });
+
+  E("line",{x1:X(cut),x2:X(cut),y1:T,y2:H-B,stroke:"var(--accent-rule)",
+            "stroke-width":1.6},s);
+  // Anchored away from whichever edge it is near, so it never rides over the
+  // y-axis labels at u = 0.5 or off the plot at u = 1.
+  E("text",{x:X(cut),y:T-4,class:"mark-label","text-anchor":
+            X(cut)>W-R-40?"end":(X(cut)<L+40?"start":"middle"),
+            fill:"var(--text-secondary)"},s)
+    .textContent="u = "+cut.toFixed(3);
+  COPULAS.forEach(({C,col})=>{
+    E("circle",{cx:X(cut),cy:Y(condP(C,cut)),r:4.5,fill:col,
+                stroke:"var(--surface-1)","stroke-width":1.8},s);
+  });
+
+  draggable(s,c5,W,0.5,1.0,L,W-R,v=>{
+    document.getElementById("cut").value=Math.round(Math.min(0.995,Math.max(0.5,v))*1000);
+    draw5();
+  });
+
+  cornerPanel("c5a",gauPts,cut,"Gaussian","var(--series-1)");
+  cornerPanel("c5b",gumPts,cut,"Gumbel","var(--series-2)");
+
+  const g=condP(C_GAU,cut), u2=condP(C_GUM,cut), cl=condP(C_CLA,cut);
+  document.getElementById("t5-gum").textContent=u2.toFixed(3);
+  document.getElementById("t5-gau").textContent=g.toFixed(3);
+  document.getElementById("t5-cla").textContent=cl.toFixed(3);
+  document.getElementById("t5-miss").textContent=Math.round((1-g/u2)*100)+"%";
+}
+function cornerPanel(id,pts,cut,label,col){
+  const host=document.getElementById(id);
+  const W=440,H=330,L=44,R=16,T=40,B=44;
+  const s=svgIn(host,W,H);
+  const X=u=>L+u*(W-L-R), Y=u=>H-B-u*(H-T-B);
+  [0,.25,.5,.75,1].forEach(t=>{
+    E("line",{x1:X(t),x2:X(t),y1:Y(0),y2:Y(1),class:"gridline"},s);
+    E("line",{x1:X(0),x2:X(1),y1:Y(t),y2:Y(t),class:"gridline"},s);
+    E("text",{x:X(t),y:H-B+16,class:"ax-label","text-anchor":"middle"},s)
+      .textContent=t.toFixed(2);
+  });
+  const [xs,ys]=pts;
+  let inCorner=0;
+  const ctx=pointLayer(host,W,H);
+  const cHit=ink(col), cMiss=ink("var(--accent-rule)");
+  ctx.globalAlpha=.24; ctx.fillStyle=cMiss;
+  for(let i=0;i<xs.length;i++){
+    if(xs[i]>cut&&ys[i]>cut){ inCorner++; continue; }
+    ctx.fillRect(X(xs[i])-.8,Y(ys[i])-.8,1.6,1.6);
+  }
+  ctx.globalAlpha=.9; ctx.fillStyle=cHit;
+  for(let i=0;i<xs.length;i++){
+    if(!(xs[i]>cut&&ys[i]>cut)) continue;
+    ctx.beginPath(); ctx.arc(X(xs[i]),Y(ys[i]),2.4,0,6.2832); ctx.fill();
+  }
+  // corner drawn last, over the cloud
+  E("rect",{x:X(cut),y:Y(1),width:X(1)-X(cut),height:Y(cut)-Y(1),fill:"none",
+            stroke:col,"stroke-width":1.5,"stroke-dasharray":"3 3",rx:3},s);
+  E("text",{x:L,y:T-20,class:"mark-label",fill:"var(--text-primary)",
+            "font-size":"13"},s).textContent=label+" copula";
+  E("text",{x:L,y:T-4,class:"mark-label",fill:col,"font-size":"12"},s)
+    .textContent=inCorner+" of 4,000 events in the corner";
+  E("text",{x:W-R,y:H-8,class:"ax-title","text-anchor":"end"},s).textContent="PEAK (u)";
+}
+
+/* ================== 6 · AND / OR / the chain ======================== */
+const c6=document.getElementById("c6");
+let fam6=0;
+function draw6(){
+  const u=+document.getElementById("u6").value/1000;
+  document.getElementById("u6-val").textContent=u.toFixed(3);
+  const C=COPULAS[fam6].C;
+
+  const W=940,H=340,L=66,R=132,T=20,B=52;
+  const s=svgIn(c6,W,H);
+  const u0=0.80,u1=0.995;
+  const X=v=>L+(v-u0)/(u1-u0)*(W-L-R);
+  const TMIN=10,TMAX=1e5;
+  const Y=t=>{ const cc=Math.min(Math.max(t,TMIN),TMAX);
+    return H-B-(Math.log10(cc)-Math.log10(TMIN))/
+      (Math.log10(TMAX)-Math.log10(TMIN))*(H-T-B); };
+
+  for(let e=1;e<=5;e++){
+    E("line",{x1:L,x2:W-R,y1:Y(Math.pow(10,e)),y2:Y(Math.pow(10,e)),class:"gridline"},s);
+    E("text",{x:L-9,y:Y(Math.pow(10,e))+4,class:"ax-label","text-anchor":"end"},s)
+      .textContent=fmt(Math.pow(10,e));
+  }
+  [0.80,0.85,0.90,0.95,0.99].forEach(v=>
+    E("text",{x:X(v),y:H-B+18,class:"ax-label",
+              "text-anchor":v===0.80?"start":"middle"},s)
+      .textContent=v.toFixed(2));
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  E("text",{x:L,y:H-10,class:"ax-title"},s).textContent="UNIVARIATE QUANTILE u OF EACH VARIABLE";
+  E("text",{x:0,y:0,class:"ax-title",transform:`translate(15,${H-B}) rotate(-90)`},s)
+    .textContent="JOINT AND RETURN PERIOD (YEARS)";
+
+  const ends=[];
+  COPULAS.forEach(({name,C:CC,col})=>{
+    let d="";
+    for(let i=0;i<=300;i++){ const v=u0+(u1-u0)*i/300;
+      d+=(i?"L":"M")+X(v).toFixed(2)+" "+Y(1/(1-2*v+CC(v,v))).toFixed(2); }
+    E("path",{d:d,fill:"none",stroke:col,"stroke-width":2.4,
+              "stroke-linejoin":"round"},s);
+    ends.push({name,col,y:Y(1/(1-2*u1+CC(u1,u1)))});
+  });
+  ends.sort((a,b)=>a.y-b.y);
+  let prev=-1e9;
+  ends.forEach(e=>{ e.ly=Math.max(e.y,prev+17); prev=e.ly; });
+  ends.forEach(e=>{
+    if(Math.abs(e.ly-e.y)>0.5)
+      E("line",{x1:X(u1),x2:W-R+16,y1:e.y,y2:e.ly,stroke:e.col,"stroke-width":.9,
+                opacity:.55},s);
+    E("text",{x:W-R+20,y:e.ly+4,class:"mark-label",fill:e.col},s).textContent=e.name;
+  });
+
+  const pAnd=1-2*u+C(u,u), pInd=(1-u)*(1-u);
+  E("line",{x1:X(u),x2:X(u),y1:Y(1/pAnd),y2:Y(1/pInd),stroke:"var(--accent-rule)",
+            "stroke-width":1.4,"stroke-dasharray":"2 3"},s);
+  E("circle",{cx:X(u),cy:Y(1/pAnd),r:6,fill:COPULAS[fam6].col,
+              stroke:"var(--surface-1)","stroke-width":2},s);
+
+  document.getElementById("t6-qv").textContent =
+    fmt(lnInv(u))+" m³/s · "+fmt(gmInv(u))+" Mm³";
+  document.getElementById("t6-and").textContent=fmtT(1/pAnd);
+  document.getElementById("t6-or").textContent=fmtT(1/(1-C(u,u)));
+  document.getElementById("t6-err").textContent =
+    fam6===3 ? "—" : fmtX((1/pInd)/(1/pAnd));
+}
+
+/* ============================ wiring ================================ */
+document.getElementById("n11").addEventListener("input",e=>{
+  document.getElementById("n11b").value=e.target.value; draw1();
+});
+document.getElementById("n11b").addEventListener("input",e=>{
+  document.getElementById("n11").value=e.target.value; draw1();
+});
+document.getElementById("to-indep").addEventListener("click",()=>{
+  document.getElementById("n11").value=15;
+  document.getElementById("n11b").value=15; draw1();
+});
+document.getElementById("to-obs").addEventListener("click",()=>{
+  document.getElementById("n11").value=32;
+  document.getElementById("n11b").value=32; draw1();
+});
+
+segment("pit-seg",m=>{ pitM=m; newPitSample(); draw3(); });
+document.getElementById("pit-x").addEventListener("input",draw3);
+
+segment("sk-marg",v=>{ skMarg=v; draw4(); });
+segment("sk-cop", v=>{ skCop=v; newSklar(); draw4(); });
+
+document.getElementById("cut").addEventListener("input",draw5);
+document.getElementById("resample").addEventListener("click",()=>{newCorner();draw5();});
+
+document.getElementById("u6").addEventListener("input",draw6);
+segment("fam6",v=>{ fam6=v; draw6(); });
+
+newPitSample(); newSklar(); newCorner();
+draw1(); draw3(); draw4(); draw5(); draw6();
+let rt; addEventListener("resize",()=>{clearTimeout(rt);
+  rt=setTimeout(()=>{draw1();draw3();draw4();draw5();draw6();},150);});
+</script>
+</body>
+</html>
