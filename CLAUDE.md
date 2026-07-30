@@ -17,6 +17,13 @@ theory, key equations, literature roadmap). Don't read it in full each session �
 for the specific section needed (e.g. "AND vs OR", "Kendall", "Serinaldi"). Same for the PDFs
 in that folder.
 
+## Running a statistics study day
+
+The user keeps a parallel elementary statistics track in `Stat_Study/` (separate folder, its own
+`CLAUDE.md`). When they ask to "do the Day 1 treatment" for a new concept, follow
+`tools/STUDY_DAY_PLAYBOOK.md` — six artefacts, the two wiring edits, house style and verification
+steps, with Day 1 (2026-07-28) as the worked reference.
+
 ## Folder map
 
 - `scripts/` — working Python scripts (Gumbel copula sampling, tail-dependence estimation,
