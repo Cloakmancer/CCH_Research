@@ -54,8 +54,12 @@ nav:
       - Literature Reading Guide: literature-guide.md
   - Statistics Study:
       - Study Log: stats-study-log.md
-      - Day 1 Problem Set: stats-problems-day1.md
-      - Day 2 Problem Set: stats-problems-day2.md
+      - Day 1 — Distribution Shape:
+          - Notes: stats-day1-distribution-shape.md
+          - Problem Set: stats-problems-day1.md
+      - Day 2 — Probability and Copulas:
+          - Notes: stats-day2-probability-and-copulas.md
+          - Problem Set: stats-problems-day2.md
   - Project:
       - Research Context: research-context.md
       - Research Log: research-log.md

@@ -33,7 +33,11 @@ MARKDOWN_MAP: dict[str, str] = {
     "3.KnowledgeBase.md.md": "knowledge-base.md",
     "4.LiteratureReadingGuide.md": "literature-guide.md",
     "4.Revision_Copula_SPH_LSTM.md": "revision-copula-sph-lstm.md",
+    # The study log is an index; each topic is its own page. Add a line here
+    # for every new day — the file is not published otherwise.
     "5.StatsStudyLog.md": "stats-study-log.md",
+    "5.1.StatsDay1_DistributionShape.md": "stats-day1-distribution-shape.md",
+    "5.2.StatsDay2_ProbabilityCopula.md": "stats-day2-probability-and-copulas.md",
     "6.StatsProblemsDay1.md": "stats-problems-day1.md",
     "7.StatsProblemsDay2.md": "stats-problems-day2.md",
 }

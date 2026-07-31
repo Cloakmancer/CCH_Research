@@ -22,21 +22,33 @@ notes, a photo of handwritten pages, a chart script, or just the topic name.
 
 ## The six artefacts
 
-### 1. Log entry → `Claude outputs/5.StatsStudyLog.md`
+### 1. Log entry → `Claude outputs/5.<N>.StatsDay<N>_<Topic>.md`
 
-**Append** a new `## Day N — <Topic>` section; this is one running file, not one per day.
+**One page per topic.** Day 1 is `5.1.StatsDay1_DistributionShape.md`, Day 2 is
+`5.2.StatsDay2_ProbabilityCopula.md`. `5.StatsStudyLog.md` is the **index**: it carries the
+framing text and one row per day, and nothing else — add a row there, do not append the entry
+itself to it.
+
+(Until 2026-07-30 this was a single running file with a `## Day N` section per day. It was
+split because the site navigation lists one item per page, so every entry after Day 1 was
+invisible unless you already knew to scroll. If you find a `## Day N` heading inside
+`5.StatsStudyLog.md`, something has re-appended and should be split back out.)
 
 Fixed structure, in order:
 
 ```
-### Concept                 what the material says, at the level it was taught
-### What it actually says   the mechanism underneath — why, not just what
-### Bridge to CCH           numbered consequences for the project. THE POINT.
-### Interactive companion   links to artefacts 2 and 3
-### Feynman check           the whole thing in plain language, no notation
-### Open thread             what is unresolved / needs a real dataset
-### Handwritten notes       the scan, if there is one
+# Day N — <Topic>         the H1; the date on the line below it
+## Concept                what the material says, at the level it was taught
+## What it actually says  the mechanism underneath — why, not just what
+## Bridge to CCH          numbered consequences for the project. THE POINT.
+## Interactive companion  links to artefacts 2 and 3
+## Feynman check          the whole thing in plain language, no notation
+## Open thread            what is unresolved / needs a real dataset
+## Handwritten notes      the scan, if there is one
 ```
+
+The index row is: day (linked to the page), date, concept, **the bridge in one line**, and
+links to that day's interactive page and problem set.
 
 An entry without a CCH bridge is a note, not a log entry, and stays in `Stat_Study/`.
 
@@ -113,10 +125,20 @@ side-tracked; naming what *not* to read is the part that does the work.
 
 ## Publishing
 
-Two edits per new page, then push:
+Two edits per new page, then push. A study day now adds **three** pages — the notes, the
+problem set and the interactive — so that is three `sync_docs.py` entries and one new nav
+group:
 
 1. `MARKDOWN_MAP` (or `HTML_MAP` + `titles`) in `tools/sync_docs.py`
-2. `nav:` in `mkdocs.yml`, under `Statistics Study`
+2. `nav:` in `mkdocs.yml`, under `Statistics Study` — one group per day:
+
+```yaml
+      - Day N — <Topic>:
+          - Notes: stats-dayN-<topic>.md
+          - Problem Set: stats-problems-dayN.md
+```
+
+Also add the day's row to the index table in `5.StatsStudyLog.md`.
 
 ```
 E:\1.MINICONDA\python.exe tools\sync_docs.py
