@@ -25,7 +25,11 @@ env/
 # daily rainfall workbook alone is ~29 MB. The repo is public and git history is
 # permanent, so this stays excluded regardless of size. Keep your own backup.
 data/
-# outputs/
+# outputs/ now holds gev_annual_maxima_results.json, a derived-from-private-data
+# cache (per-station raw annual maxima arrays) written by
+# scripts/fit_gev_annual_maxima.py — more granular than what's published in the
+# notes, so it stays excluded on the same "not ours to redistribute" grounds.
+outputs/
 *.nc
 *.hdf5
 *.h5
@@ -39,6 +43,13 @@ CaseOut/
 # --- Claude Code local state -------------------------------------------
 # Machine-local permission settings; not useful to anyone else, and public.
 .claude/settings.local.json
+
+# --- Personal dashboard (private calendar/inbox/Anki data) -------------
+# Rendered snapshot + any fetched-data dumps contain personal calendar/email
+# content. The repo is public (GitHub Pages) — this must never be committed.
+cch_dashboard*.html
+dashboard_debug_brief.md
+tools/dashboard_data/
 
 # --- Editors and OS ----------------------------------------------------
 .vscode/

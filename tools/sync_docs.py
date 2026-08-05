@@ -41,6 +41,7 @@ MARKDOWN_MAP: dict[str, str] = {
     "5.3.StatsDay3_ExtremeValueTheory.md": "stats-day3-extreme-value-theory.md",
     "6.StatsProblemsDay1.md": "stats-problems-day1.md",
     "7.StatsProblemsDay2.md": "stats-problems-day2.md",
+    "8.StatsProblemsDay3.md": "stats-problems-day3.md",
 }
 
 # Deliberately NOT published:
@@ -56,6 +57,7 @@ HTML_MAP: dict[str, str] = {
     "CCH_study_workflow_plan.html": "interactive/study-workflow.html",
     "Skewness_and_Tails_interactive.html": "interactive/skewness-and-tails.html",
     "Probability_and_Copulas_interactive.html": "interactive/probability-and-copulas.html",
+    "GEV_Extreme_Value_interactive.html": "interactive/gev-extreme-value.html",
 }
 
 
@@ -227,6 +229,14 @@ def write_interactive_index(published: list[str]) -> None:
             "Sklar's decomposition on separate controls, four families in the corner, "
             "and what independence costs a cascade. Companion to the Statistics "
             "Study Log.",
+        ),
+        "interactive/gev-extreme-value.html": (
+            "MLE, Block Maxima and the GEV Shape Parameter",
+            "Five live panels on extreme value theory: maximum likelihood from coin flips "
+            "to continuous data, why block maxima need their own limit theorem distinct "
+            "from the CLT, the three GEV tail regimes with Kathmandu and Surkhet marked as "
+            "real examples, and why Surkhet's ξ estimate is so much less stable. "
+            "Companion to the Statistics Study Log.",
         ),
     }
 

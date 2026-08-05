@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MLE, block maxima and the GEV shape parameter</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0:#f4f4f1;
+    --surface-1:#fcfcfb;
+    --surface-2:#eceae4;
+    --line:#dcdad2;
+    --text-primary:#0b0b0b;
+    --text-secondary:#52514e;
+    --text-muted:#75736c;
+    --series-1:#2a78d6;   /* MLE / the assumed-safe model */
+    --series-2:#eb6834;   /* reality / the heavy-tailed regime */
+    --series-3:#1baf7a;   /* L-moments — the alternative estimator */
+    --series-1-soft:#2a78d61f;
+    --series-2-soft:#eb68341f;
+    --series-3-soft:#1baf7a1f;
+    --grid:#e6e4dc;
+    --accent-rule:#75736c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-0:#121211;
+      --surface-1:#1a1a19;
+      --surface-2:#232322;
+      --line:#383834;
+      --text-primary:#ffffff;
+      --text-secondary:#c3c2b7;
+      --text-muted:#9a998f;
+      --series-1:#3987e5;
+      --series-2:#d95926;
+      --series-3:#2bc98c;
+      --series-1-soft:#3987e529;
+      --series-2-soft:#d9592629;
+      --series-3-soft:#2bc98c29;
+      --grid:#2c2c2a;
+      --accent-rule:#9a998f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0:#121211; --surface-1:#1a1a19; --surface-2:#232322; --line:#383834;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#9a998f;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#2bc98c;
+    --series-1-soft:#3987e529; --series-2-soft:#d9592629; --series-3-soft:#2bc98c29;
+    --grid:#2c2c2a; --accent-rule:#9a998f;
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+         background:var(--surface-0); color:var(--text-primary);
+         padding:26px 20px 60px; font-size:14px; line-height:1.6; }
+  .wrap { max-width:1000px; margin:0 auto; }
+
+  header { margin-bottom:26px; }
+  h1 { font-size:23px; font-weight:700; line-height:1.25; letter-spacing:-.01em; }
+  .sub { font-size:13.5px; color:var(--text-secondary); margin-top:8px; max-width:70ch; }
+  .kicker { font-size:10.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+            color:var(--text-muted); margin-bottom:7px; }
+
+  section.card { background:var(--surface-1); border:1px solid var(--line);
+                 border-radius:12px; padding:20px 22px 22px; margin-bottom:20px; }
+  h2 { font-size:17px; font-weight:650; letter-spacing:-.005em; margin-bottom:3px; }
+  h2 .num { color:var(--text-muted); font-weight:600; margin-right:8px; }
+  .lede { font-size:13.2px; color:var(--text-secondary); max-width:74ch; margin-bottom:16px; }
+  p { font-size:13.2px; margin-bottom:9px; max-width:74ch; }
+  p.tight { margin-bottom:5px; }
+  .say { background:var(--surface-2); border-left:3px solid var(--series-2);
+         border-radius:0 8px 8px 0; padding:11px 14px; margin:14px 0 4px;
+         font-size:13.2px; max-width:74ch; }
+  .say b { font-weight:650; }
+  em.q { font-style:normal; color:var(--text-primary); font-weight:600; }
+
+  /* --- controls ------------------------------------------------------- */
+  .controls { display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end;
+              margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line); }
+  .ctl { display:flex; flex-direction:column; gap:5px; min-width:230px; flex:1 1 230px; }
+  .ctl label { font-size:11px; font-weight:650; letter-spacing:.03em; color:var(--text-secondary);
+               text-transform:uppercase; }
+  .ctl .val { font-variant-numeric:tabular-nums; color:var(--text-primary); font-weight:600;
+              text-transform:none; letter-spacing:0; }
+  input[type=range] { width:100%; accent-color:var(--series-2); height:22px; cursor:grab; }
+  button.ctl-btn { font:inherit; font-size:12.5px; font-weight:600; padding:8px 16px;
+                   border:1px solid var(--line); background:var(--surface-2);
+                   color:var(--text-primary); border-radius:8px; cursor:pointer;
+                   transition:background .13s; }
+  button.ctl-btn:hover { background:var(--line); }
+  button.ctl-btn.active { background:var(--series-2-soft); border-color:var(--series-2); }
+
+  /* --- chart shell ---------------------------------------------------- */
+  figure { margin:0; }
+  .chart { width:100%; position:relative; }
+  .chart svg { width:100%; height:auto; display:block; overflow:visible; touch-action:none; }
+  figcaption { font-size:11.8px; color:var(--text-muted); margin-top:9px; max-width:74ch; }
+  .legend { display:flex; flex-wrap:wrap; gap:16px; margin:2px 0 10px; font-size:12px;
+            color:var(--text-secondary); }
+  .legend span { display:flex; align-items:center; gap:6px; }
+  .swatch { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+  .swatch.line { height:3px; border-radius:2px; }
+
+  text { font-family:inherit; }
+  .ax-label { font-size:11px; fill:var(--text-muted); font-weight:500; }
+  .ax-title { font-size:11px; fill:var(--text-secondary); font-weight:650;
+              letter-spacing:.03em; text-transform:uppercase; }
+  .gridline { stroke:var(--grid); stroke-width:1; }
+  .axisline { stroke:var(--line); stroke-width:1; }
+  .mark-label { font-size:11.5px; font-weight:650; }
+
+  .tip { position:absolute; pointer-events:none; opacity:0; transition:opacity .1s;
+         background:var(--surface-1); border:1px solid var(--line); border-radius:8px;
+         padding:8px 11px; font-size:12px; line-height:1.5; white-space:nowrap;
+         box-shadow:0 4px 16px rgba(0,0,0,.14); z-index:5; }
+  .tip .th { font-weight:650; margin-bottom:4px; }
+  .tip .row { display:flex; align-items:center; gap:7px; }
+  .tip .row .k { color:var(--text-secondary); }
+  .tip .row .v { margin-left:auto; font-variant-numeric:tabular-nums; font-weight:600;
+                 padding-left:14px; }
+
+  /* --- stat tiles ----------------------------------------------------- */
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+           gap:12px; margin:16px 0 4px; }
+  .tile { background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
+          padding:13px 15px; }
+  .tile .t-lab { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+                 color:var(--text-muted); display:flex; align-items:center; gap:6px; }
+  .tile .t-val { font-size:26px; font-weight:700; letter-spacing:-.02em; margin-top:6px;
+                 font-variant-numeric:tabular-nums; line-height:1.1; }
+  .tile .t-sub { font-size:11.5px; color:var(--text-secondary); margin-top:3px; }
+  .tile.hero { background:var(--series-2-soft); border-color:var(--series-2); }
+  .tile.hero .t-val { color:var(--series-2); font-size:30px; }
+  .tile.alt { background:var(--series-3-soft); border-color:var(--series-3); }
+  .tile.alt .t-val { color:var(--series-3); }
+
+  table { border-collapse:collapse; width:100%; max-width:640px; font-size:12.5px;
+          margin:14px 0 4px; }
+  th, td { text-align:left; padding:7px 11px; border-bottom:1px solid var(--line); }
+  th { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted);
+       font-weight:700; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tbody tr:last-child td { border-bottom:none; }
+  details { margin-top:12px; }
+  summary { font-size:12px; color:var(--text-secondary); cursor:pointer; font-weight:600; }
+
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:720px) { .split { grid-template-columns:1fr; } h1 { font-size:20px; } }
+
+  footer { font-size:12px; color:var(--text-muted); border-top:1px solid var(--line);
+           padding-top:14px; margin-top:26px; }
+  footer a { color:var(--series-1); text-decoration:none; }
+  footer a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Statistics study · Day 3 · Extreme value theory</div>
+  <h1>MLE, block maxima and the GEV shape parameter</h1>
+  <p class="sub">Five things to play with, in the order Day 3 was actually taught: how maximum
+  likelihood picks a number, why it needs its own theorem for <em>maxima</em> rather than
+  <em>averages</em>, what the shape parameter ξ physically means, and why its estimate is so much
+  less stable at Surkhet than at Kathmandu. Every curve and number below is computed live from the
+  same fits behind the <a href="../stats-day3-extreme-value-theory/">Day 3 notes</a>.</p>
+</header>
+
+<!-- ============================================================ 1 -->
+<section class="card">
+  <h2><span class="num">1</span>MLE, the simplest possible case</h2>
+  <p class="lede">Ten coin flips. Drag the slider to change how many came up heads, and watch the
+  <b>likelihood curve</b> — the probability of seeing <em>exactly this data</em> — as a function of
+  the candidate probability p. MLE just picks the p where that curve peaks.</p>
+
+  <div class="controls">
+    <div class="ctl">
+      <label>Heads out of 10 flips <span class="val" id="cv1-val"></span></label>
+      <input type="range" id="cv1" min="0" max="10" value="8" step="1">
+    </div>
+  </div>
+
+  <figure>
+    <div class="chart" id="c1"></div>
+    <figcaption>Likelihood of the observed data as a function of the candidate coin-bias p. The
+    peak is the maximum-likelihood estimate p̂.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile hero"><div class="t-lab">MLE estimate p̂</div><div class="t-val" id="t1-phat"></div>
+      <div class="t-sub">= heads / flips, exactly</div></div>
+    <div class="tile"><div class="t-lab">Likelihood at p̂</div><div class="t-val" id="t1-lhat"></div>
+      <div class="t-sub">the height of the peak</div></div>
+    <div class="tile"><div class="t-lab">Likelihood at p = 0.5</div><div class="t-val" id="t1-l5"></div>
+      <div class="t-sub">the "fair coin" guess</div></div>
+    <div class="tile"><div class="t-lab">p̂ is more likely by</div><div class="t-val" id="t1-ratio"></div>
+      <div class="t-sub">than the fair-coin guess</div></div>
+  </div>
+
+  <div class="say"><b>In words:</b> MLE is not a formula you memorise, it is this picture — try
+  every candidate probability, compute how likely your <em>actual, exact</em> data would be under
+  each one, and keep the winner. For 8 heads out of 10, no candidate beats p = 0.8, because 0.8 is
+  the value under which that specific outcome is least surprising. Drag to 4/10: the peak moves
+  to 0.4 with no extra reasoning required. The generalisation used later in this page — 40 heads out
+  of 100 flips gives p̂ = 0.40 — is exactly the same rule at a different sample size, not a new one.</div>
+</section>
+
+<!-- ============================================================ 2 -->
+<section class="card">
+  <h2><span class="num">2</span>MLE for continuous data — no single value has a probability</h2>
+  <p class="lede">Rainfall depths are not coin flips. A continuous variable's density is tall where
+  data is plausible, low where it isn't — but no exact value ever has a positive probability, only a
+  density. Fit a Normal(μ, σ=1) to three points, {2, 4, 6}. Drag μ and watch the three heights, and
+  their <b>product</b> — the likelihood — change together.</p>
+
+  <div class="controls">
+    <div class="ctl">
+      <label>Candidate μ <span class="val" id="cv2-val"></span></label>
+      <input type="range" id="cv2" min="1" max="7" value="4" step="0.05">
+    </div>
+  </div>
+
+  <div class="split">
+    <figure>
+      <div class="chart" id="c2a"></div>
+      <figcaption>The candidate Normal curve at this μ. Dots mark the heights at x = 2, 4, 6 — the
+      three numbers being multiplied together.</figcaption>
+    </figure>
+    <figure>
+      <div class="chart" id="c2b"></div>
+      <figcaption>Likelihood L(μ) = product of the three heights, as μ sweeps across its range. The
+      peak sits exactly at the sample mean.</figcaption>
+    </figure>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">f(2;μ)</div><div class="t-val" id="t2-f2"></div></div>
+    <div class="tile"><div class="t-lab">f(4;μ)</div><div class="t-val" id="t2-f4"></div></div>
+    <div class="tile"><div class="t-lab">f(6;μ)</div><div class="t-val" id="t2-f6"></div></div>
+    <div class="tile hero"><div class="t-lab">Likelihood L(μ)</div><div class="t-val" id="t2-L"></div>
+      <div class="t-sub" id="t2-Lsub"></div></div>
+  </div>
+
+  <div class="say"><b>In words:</b> at μ = 3, the heights are 0.242, 0.242, 0.0044 — that last one is
+  tiny, because x = 6 sits far out in the tail of a curve centred at 3. At μ = 4 the heights are
+  0.054, 0.399, 0.054 — no single height is as large as 0.399, but the <em>product</em> wins, about
+  4.5× higher, because nothing is being badly mispredicted. Calculus (set the derivative of the
+  log-likelihood to zero) proves μ = 4, the sample mean, is the exact maximiser over
+  <em>every</em> candidate — not just a better guess than 3. This is what
+  <code>scipy.stats.&lt;dist&gt;.fit()</code> does numerically instead of by hand, and it is the same
+  search used to produce every μ, σ, ξ in this page.</div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section class="card">
+  <h2><span class="num">3</span>Two different theorems for two different summaries</h2>
+  <p class="lede">Draw <code>n</code> values from the same skewed distribution (Exponential(1), a
+  stand-in for "some messy real quantity") and compute two different summaries of the block: its
+  <b>average</b> and its <b>maximum</b>. Slide the block size and watch what each summary's own
+  distribution does as n grows — 400 blocks redrawn fresh each time you move the slider.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:1 1 340px">
+      <label>Block size n <span class="val" id="cv3-val"></span></label>
+      <input type="range" id="cv3" min="0" max="6" value="2" step="1">
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch line" style="background:var(--series-1)"></i>Block average (CLT territory)</span>
+    <span><i class="swatch line" style="background:var(--series-2)"></i>Block maximum (FTG territory)</span>
+  </div>
+  <div class="split">
+    <figure>
+      <div class="chart" id="c3a"></div>
+      <figcaption>Distribution of the block <b>average</b> over 400 simulated blocks.</figcaption>
+    </figure>
+    <figure>
+      <div class="chart" id="c3b"></div>
+      <figcaption>Distribution of the block <b>maximum</b> over the same 400 blocks.</figcaption>
+    </figure>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Average: mean</div><div class="t-val" id="t3-am"></div></div>
+    <div class="tile"><div class="t-lab">Average: spread (sd)</div><div class="t-val" id="t3-as"></div>
+      <div class="t-sub">shrinks like 1/√n</div></div>
+    <div class="tile hero"><div class="t-lab">Maximum: mean</div><div class="t-val" id="t3-mm"></div>
+      <div class="t-sub">keeps climbing, never settles</div></div>
+    <div class="tile hero"><div class="t-lab">Maximum: spread (sd)</div><div class="t-val" id="t3-ms"></div>
+      <div class="t-sub">shrinks far more slowly</div></div>
+  </div>
+
+  <div class="say"><b>In words:</b> push n up and the average's histogram does the familiar thing —
+  it tightens around a fixed centre and turns into a symmetric bell (the Central Limit Theorem,
+  CLT). The maximum's histogram does <em>not</em> do that: its centre keeps sliding right forever
+  and it stays right-skewed at every block size. It has its own limit theorem
+  (Fisher–Tippett–Gnedenko, FTG) with its own family — the GEV — and its own centring/scaling rule,
+  not the Normal's. Set n = 1 and look at the maximum panel: with a block of size one, the "maximum"
+  is just the raw data point, which is exactly why fitting GEV to raw daily rainfall is a category
+  error — block size 1 is not a maximum of anything, so FTG makes no promise about it at all.</div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section class="card">
+  <h2><span class="num">4</span>What ξ actually controls — the three tail regimes</h2>
+  <p class="lede">Same GEV shape, standardised to μ = 0, σ = 1, one slider: ξ (xi). This is the
+  🔭 figure flagged as an open thread in the Day 3 notes — Kathmandu and Surkhet marked as real
+  examples on opposite sides of ξ = 0.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:1 1 260px">
+      <label>Shape parameter ξ <span class="val" id="cv4-val"></span></label>
+      <input type="range" id="cv4" min="-40" max="60" value="0" step="1">
+    </div>
+    <button class="ctl-btn" id="jump-gumbel">Gumbel · ξ = 0</button>
+    <button class="ctl-btn" id="jump-kath">Kathmandu · ξ = −0.003</button>
+    <button class="ctl-btn" id="jump-surk">Surkhet · ξ = +0.398</button>
+    <button class="ctl-btn" id="jump-weibull">Bounded example · ξ = −0.30</button>
+  </div>
+
+  <figure>
+    <div class="chart" id="c4"></div>
+    <figcaption>GEV density at the current ξ (standard form, μ=0, σ=1). Shaded region past x=6 is
+    the far tail — where a design flood lives.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile hero"><div class="t-lab">Regime</div><div class="t-val" id="t4-regime" style="font-size:20px"></div></div>
+    <div class="tile"><div class="t-lab">Upper endpoint</div><div class="t-val" id="t4-endpoint"></div>
+      <div class="t-sub">the largest value physically possible</div></div>
+    <div class="tile"><div class="t-lab">P(X &gt; 6)</div><div class="t-val" id="t4-tail"></div>
+      <div class="t-sub">how much mass survives into the far tail</div></div>
+  </div>
+
+  <div class="say"><b>In words:</b> ξ = 0 is <b>Gumbel</b> — the tail decays exponentially fast; no
+  hard ceiling, but very large values become rare very quickly. ξ &gt; 0 is <b>Fréchet</b> — the
+  tail decays like a power law, i.e. slowly; no ceiling at all, and large outliers stay far more
+  plausible than Gumbel suggests. ξ &lt; 0 is <b>Weibull</b> (a different Weibull than the
+  reliability-engineering one) — a genuine finite upper bound the variable can mathematically never
+  cross. Kathmandu's ξ ≈ −0.003 sits essentially on the Gumbel line — for practical purposes, no
+  detectable ceiling. Surkhet's ξ ≈ +0.398 is well into Fréchet — a real, heavy tail, and the reason
+  its 1000-year return level (≈1028 mm, computed in Set D below) is more than double its 10-year
+  level, where Kathmandu's is not.</div>
+</section>
+
+<!-- ============================================================ 5 -->
+<section class="card">
+  <h2><span class="num">5</span>Why Surkhet's ξ moves so much more than Kathmandu's</h2>
+  <p class="lede">This is the bridge to the project. Both stations have n = 41 years. Both are fit
+  with exactly the same method. Their bootstrap uncertainty is nowhere close to the same size.</p>
+
+  <div class="legend">
+    <span><i class="swatch" style="background:var(--series-1)"></i>MLE ξ̂, with 95% parametric-bootstrap CI</span>
+    <span><i class="swatch" style="background:var(--series-3)"></i>L-moments ξ̂ (point estimate only)</span>
+  </div>
+  <figure>
+    <div class="chart" id="c5"></div>
+    <figcaption>ξ estimates for both stations, two estimation methods. The whisker is the 95%
+    bootstrap interval for the MLE estimate (500 parametric bootstrap refits).</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Kathmandu · MLE CI width</div><div class="t-val">0.56</div>
+      <div class="t-sub">(−0.30, 0.26)</div></div>
+    <div class="tile hero"><div class="t-lab">Surkhet · MLE CI width</div><div class="t-val">3.25</div>
+      <div class="t-sub">(0.08, 3.34) — 5.8× wider</div></div>
+    <div class="tile"><div class="t-lab">Kathmandu top year vs next</div><div class="t-val">177.0 / 124.4</div>
+      <div class="t-sub">gap 52.6 mm</div></div>
+    <div class="tile alt"><div class="t-lab">Surkhet top year vs next</div><div class="t-val">423.1 / 281.2</div>
+      <div class="t-sub">gap 141.9 mm — 2.7× Kathmandu's</div></div>
+  </div>
+
+  <div class="say"><b>In words:</b> ξ is estimated almost entirely from the top few order
+  statistics, not all 41 points equally. Surkhet has one single year sitting far above every other
+  year, with no competing evidence from other years to outvote it; Kathmandu's top values decrease
+  smoothly, giving the bootstrap resamples nothing comparable to swing on. That gap-to-next-highest
+  is the mechanism — the wide CI is the consequence.</div>
+
+  <details>
+    <summary>A leave-one-out check — and where the tidy story gets more nuanced</summary>
+    <table>
+      <thead><tr><th>Station, minus its own top year</th><th class="num">MLE ξ̂</th><th class="num">L-moments ξ̂</th></tr></thead>
+      <tbody>
+        <tr><td>Kathmandu, full record (n=41)</td><td class="num">−0.003</td><td class="num">−0.002</td></tr>
+        <tr><td>Kathmandu, without its max (177.0)</td><td class="num">−0.219</td><td class="num">−0.210</td></tr>
+        <tr><td>Surkhet, full record (n=41)</td><td class="num">+0.398</td><td class="num">+0.350</td></tr>
+        <tr><td>Surkhet, without its max (423.1)</td><td class="num">+0.264</td><td class="num">+0.182</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:10px">Deleting one point is a different, cruder test than resampling — and
+    the honest result does not hand you the clean story. Kathmandu's own ξ̂ also swings a lot when
+    its single largest year is deleted (−0.003 → −0.219), and here L-moments swing by <em>more</em>
+    than MLE in both deletions, not less. Removing one order statistic from 41 tests something
+    different from what the bootstrap tests: the bootstrap resamples the whole record with
+    replacement thousands of times and asks how much the estimate <em>typically</em> varies; a
+    single deletion just asks what one specific point is worth. L-moments' claimed advantage — a
+    bounded influence function, so no single value can dominate through amplification — is a
+    statement about that resampling behaviour, which is exactly the CI-width comparison above, not
+    about surviving the removal of one point. Running the L-moments estimator through the same
+    bootstrap machinery used for MLE is flagged in the notes' open thread as the next real check,
+    not yet done here.</p>
+  </details>
+</section>
+
+<footer>
+  Generated for the CCH research notes · companion to the
+  <a href="../stats-day3-extreme-value-theory/">Day 3 notes</a> · all curves computed live in your
+  browser; the five station fits (Kathmandu, Pokhara, Simara, Biratnagar, Surkhet) and the bootstrap
+  and L-moments numbers were computed with <code>scipy.stats.genextreme</code> and
+  <code>lmoments3</code> against the real 1980–2020 daily rainfall record and are reproduced exactly
+  as fitted, not simulated for this page.
+</footer>
+
+</div>
+
+<script>
+"use strict";
+/* ============================ small maths ============================ */
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+const fmt3 = n => n.toFixed(3);
+const fmt2 = n => n.toFixed(2);
+
+function nPdf(x,mu,sig){ return Math.exp(-0.5*((x-mu)/sig)**2)/(sig*Math.sqrt(2*Math.PI)); }
+function binomCoeff(n,k){
+  let r=1; for(let i=0;i<k;i++) r=r*(n-i)/(i+1);
+  return r;
+}
+function binomPmf(k,n,p){
+  if(p<=0) return k===0?1:0;
+  if(p>=1) return k===n?1:0;
+  return binomCoeff(n,k)*Math.pow(p,k)*Math.pow(1-p,n-k);
+}
+// GEV standard form (mu=0, sigma=1), scipy xi convention.
+function gevPdf(x,xi){
+  if(Math.abs(xi)<1e-6){ const t=Math.exp(-x); return t*Math.exp(-t); }
+  const z=1+xi*x;
+  if(z<=0) return 0;
+  const t=Math.pow(z,-1/xi);
+  return Math.pow(z,-1/xi-1)*Math.exp(-t);
+}
+function gevSf(x,xi){ // survival, P(X>x)
+  if(Math.abs(xi)<1e-6) return 1-Math.exp(-Math.exp(-x));
+  const z=1+xi*x;
+  if(z<=0) return xi<0?0:1;
+  return 1-Math.exp(-Math.pow(z,-1/xi));
+}
+
+/* ============================ svg helpers ============================ */
+const NS="http://www.w3.org/2000/svg";
+function E(tag,attrs,parent){
+  const n=document.createElementNS(NS,tag);
+  for(const k in attrs) n.setAttribute(k,attrs[k]);
+  if(parent) parent.appendChild(n);
+  return n;
+}
+function svgIn(host,w,h){
+  host.innerHTML="";
+  const s=E("svg",{viewBox:`0 0 ${w} ${h}`,role:"img"},host);
+  return s;
+}
+function tipFor(host){
+  const d=document.createElement("div"); d.className="tip"; host.appendChild(d); return d;
+}
+function showTip(tip,host,x,y,html){
+  tip.innerHTML=html; tip.style.opacity=1;
+  const hw=host.clientWidth, tw=tip.offsetWidth;
+  let left=x+14; if(left+tw>hw) left=x-tw-14;
+  tip.style.left=Math.max(0,left)+"px"; tip.style.top=(y-10)+"px";
+}
+
+/* ====================== 1 · coin-flip MLE ============================= */
+const c1=document.getElementById("c1");
+function draw1(){
+  const k=+document.getElementById("cv1").value, n=10;
+  document.getElementById("cv1-val").textContent=k+" / "+n;
+  const phat=k/n;
+
+  const W=940,H=300,L=54,R=18,T=18,B=44;
+  const X=p=>L+p*(W-L-R);
+  let ymax=0;
+  for(let i=0;i<=400;i++) ymax=Math.max(ymax,binomPmf(k,n,i/400));
+  ymax*=1.15;
+  const Y=v=>H-B-(v/ymax)*(H-T-B);
+
+  const s=svgIn(c1,W,H);
+  for(let g=0;g<=4;g++){
+    const yy=T+(H-T-B)*g/4;
+    E("line",{x1:L,x2:W-R,y1:yy,y2:yy,class:"gridline"},s);
+  }
+  [0,.2,.4,.6,.8,1].forEach(p=>{
+    E("line",{x1:X(p),x2:X(p),y1:H-B,y2:H-B+6,class:"axisline"},s);
+    E("text",{x:X(p),y:H-B+20,class:"ax-label","text-anchor":"middle"},s).textContent=p.toFixed(1);
+  });
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  E("text",{x:L,y:H-6,class:"ax-title"},s).textContent="CANDIDATE PROBABILITY p";
+  E("text",{x:0,y:0,class:"ax-title",transform:`translate(13,${H-B}) rotate(-90)`},s)
+    .textContent="LIKELIHOOD OF THIS DATA";
+
+  let d="";
+  for(let i=0;i<=400;i++){ const p=i/400;
+    d+=(i?"L":"M")+X(p).toFixed(2)+" "+Y(binomPmf(k,n,p)).toFixed(2); }
+  E("path",{d:d+`L${X(1)} ${H-B} L${X(0)} ${H-B} Z`,fill:"var(--series-2-soft)",stroke:"none"},s);
+  E("path",{d,fill:"none",stroke:"var(--series-2)","stroke-width":2.5,"stroke-linejoin":"round"},s);
+
+  const Lhat=binomPmf(k,n,phat), L5=binomPmf(k,n,0.5);
+  E("line",{x1:X(phat),x2:X(phat),y1:Y(Lhat),y2:H-B,stroke:"var(--accent-rule)",
+            "stroke-width":1.5,"stroke-dasharray":"3 3"},s);
+  E("circle",{cx:X(phat),cy:Y(Lhat),r:5.5,fill:"var(--series-2)",stroke:"var(--surface-1)","stroke-width":2},s);
+  E("text",{x:X(phat)+10,y:Y(Lhat)-8,class:"mark-label",fill:"var(--series-2)"},s)
+    .textContent="p̂ = "+phat.toFixed(2);
+  if(k!==5){
+    E("circle",{cx:X(0.5),cy:Y(L5),r:4,fill:"var(--series-1)",stroke:"var(--surface-1)","stroke-width":1.5},s);
+    E("text",{x:X(0.5)+9,y:Y(L5)+ (X(0.5)<X(phat)?16:-8),class:"mark-label",fill:"var(--series-1)"},s)
+      .textContent="p = 0.5";
+  }
+
+  document.getElementById("t1-phat").textContent=phat.toFixed(2);
+  document.getElementById("t1-lhat").textContent=Lhat.toFixed(4);
+  document.getElementById("t1-l5").textContent=L5.toFixed(4);
+  document.getElementById("t1-ratio").textContent = L5>0 ? (Lhat/L5).toFixed(2)+"×" : "—";
+}
+
+/* ====================== 2 · continuous MLE ============================ */
+const DATA2=[2,4,6];
+function draw2(){
+  const mu=+document.getElementById("cv2").value;
+  document.getElementById("cv2-val").textContent=mu.toFixed(2);
+
+  // ---- 2a: curve + heights
+  const Wa=440,Ha=300,La=44,Ra=16,Ta=18,Ba=40;
+  const x0=0,x1=8;
+  const Xa=v=>La+(v-x0)/(x1-x0)*(Wa-La-Ra);
+  const ymaxA=nPdf(mu,mu,1)*1.15;
+  const Ya=d=>Ha-Ba-(d/ymaxA)*(Ha-Ta-Ba);
+  const sa=svgIn(document.getElementById("c2a"),Wa,Ha);
+  for(let v=0;v<=x1;v+=2) E("text",{x:Xa(v),y:Ha-Ba+16,class:"ax-label","text-anchor":"middle"},sa).textContent=v;
+  E("line",{x1:La,x2:Wa-Ra,y1:Ha-Ba,y2:Ha-Ba,class:"axisline"},sa);
+  let da="";
+  for(let i=0;i<=300;i++){ const v=x0+(x1-x0)*i/300;
+    da+=(i?"L":"M")+Xa(v).toFixed(2)+" "+Ya(nPdf(v,mu,1)).toFixed(2); }
+  E("path",{d:da,fill:"none",stroke:"var(--series-1)","stroke-width":2.5},sa);
+  const heights=DATA2.map(v=>nPdf(v,mu,1));
+  DATA2.forEach((v,i)=>{
+    E("line",{x1:Xa(v),x2:Xa(v),y1:Ya(heights[i]),y2:Ha-Ba,stroke:"var(--series-2)",
+              "stroke-width":1.5,"stroke-dasharray":"3 3"},sa);
+    E("circle",{cx:Xa(v),cy:Ya(heights[i]),r:5.5,fill:"var(--series-2)",
+                stroke:"var(--surface-1)","stroke-width":2},sa);
+    E("text",{x:Xa(v),y:Ha-Ba+30,class:"mark-label","text-anchor":"middle",
+              fill:"var(--text-secondary)"},sa).textContent="x="+v;
+  });
+
+  // ---- 2b: likelihood curve over mu
+  const Wb=440,Hb=300,Lb=44,Rb=16,Tb=18,Bb=40;
+  const mu0=1,mu1=7;
+  const Xb=m=>Lb+(m-mu0)/(mu1-mu0)*(Wb-Lb-Rb);
+  const like=m=>DATA2.reduce((acc,v)=>acc*nPdf(v,m,1),1);
+  let ymaxB=0;
+  for(let i=0;i<=300;i++) ymaxB=Math.max(ymaxB,like(mu0+(mu1-mu0)*i/300));
+  ymaxB*=1.15;
+  const Yb=v=>Hb-Bb-(v/ymaxB)*(Hb-Tb-Bb);
+  const sb=svgIn(document.getElementById("c2b"),Wb,Hb);
+  for(let m=1;m<=7;m++) E("text",{x:Xb(m),y:Hb-Bb+16,class:"ax-label","text-anchor":"middle"},sb).textContent=m;
+  E("line",{x1:Lb,x2:Wb-Rb,y1:Hb-Bb,y2:Hb-Bb,class:"axisline"},sb);
+  let db="";
+  for(let i=0;i<=300;i++){ const m=mu0+(mu1-mu0)*i/300;
+    db+=(i?"L":"M")+Xb(m).toFixed(2)+" "+Yb(like(m)).toFixed(2); }
+  E("path",{d:db+`L${Xb(mu1)} ${Hb-Bb} L${Xb(mu0)} ${Hb-Bb} Z`,fill:"var(--series-2-soft)",stroke:"none"},sb);
+  E("path",{d:db,fill:"none",stroke:"var(--series-2)","stroke-width":2.5},sb);
+  E("circle",{cx:Xb(4),cy:Yb(like(4)),r:4,fill:"var(--text-muted)"},sb);
+  E("text",{x:Xb(4),y:Yb(like(4))-10,class:"mark-label","text-anchor":"middle",fill:"var(--text-muted)"},sb)
+    .textContent="peak at μ=4";
+  E("circle",{cx:Xb(mu),cy:Yb(like(mu)),r:5.5,fill:"var(--series-1)",stroke:"var(--surface-1)","stroke-width":2},sb);
+
+  document.getElementById("t2-f2").textContent=heights[0].toFixed(4);
+  document.getElementById("t2-f4").textContent=heights[1].toFixed(4);
+  document.getElementById("t2-f6").textContent=heights[2].toFixed(4);
+  const Lval=like(mu);
+  document.getElementById("t2-L").textContent=Lval.toFixed(6);
+  document.getElementById("t2-Lsub").textContent = Math.abs(mu-4)<0.01 ? "the maximiser" :
+    (Lval>0 ? (like(4)/Lval).toFixed(2)+"× lower than the peak at μ=4" : "");
+}
+
+/* ====================== 3 · CLT vs FTG ================================ */
+const BLOCKS=[1,2,5,10,30,90,365];
+function expSample(rng){ return -Math.log(1-rng()); }
+function draw3(){
+  const idx=+document.getElementById("cv3").value;
+  const n=BLOCKS[idx];
+  document.getElementById("cv3-val").textContent="n = "+n;
+  const rng=mulberry32(20260805+n*7919);
+  const REPS=400;
+  const avgs=[],maxs=[];
+  for(let r=0;r<REPS;r++){
+    let s=0,m=-Infinity;
+    for(let i=0;i<n;i++){ const v=expSample(rng); s+=v; if(v>m)m=v; }
+    avgs.push(s/n); maxs.push(m);
+  }
+  const meanOf=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  const sdOf=a=>{ const m=meanOf(a); return Math.sqrt(meanOf(a.map(v=>(v-m)**2))); };
+
+  function histogram(hostId,vals,color,xmaxOverride){
+    const W=440,H=260,L=44,R=16,T=16,B=40;
+    const xmax = xmaxOverride || Math.max(...vals)*1.05;
+    const nbins=22;
+    const counts=new Array(nbins).fill(0);
+    vals.forEach(v=>{ let b=Math.floor(v/xmax*nbins); if(b>=nbins)b=nbins-1; if(b<0)b=0; counts[b]++; });
+    const cmax=Math.max(...counts)*1.15;
+    const X=v=>L+(v/xmax)*(W-L-R);
+    const Y=c=>H-B-(c/cmax)*(H-T-B);
+    const s=svgIn(document.getElementById(hostId),W,H);
+    for(let t=0;t<=4;t++) E("line",{x1:L,x2:W-R,y1:T+(H-T-B)*t/4,y2:T+(H-T-B)*t/4,class:"gridline"},s);
+    const ticks = xmax>20? [0,Math.round(xmax/2),Math.round(xmax)] : [0,(xmax/2).toFixed(1),xmax.toFixed(1)];
+    ticks.forEach(t=>{
+      const tv=+t;
+      E("text",{x:X(tv),y:H-B+16,class:"ax-label","text-anchor":"middle"},s).textContent=t;
+    });
+    E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+    const bw=(W-L-R)/nbins;
+    counts.forEach((c,i)=>{
+      E("rect",{x:L+i*bw+1,y:Y(c),width:Math.max(1,bw-2),height:H-B-Y(c),fill:color,opacity:.82,rx:1.5},s);
+    });
+  }
+  histogram("c3a",avgs,"var(--series-1)");
+  histogram("c3b",maxs,"var(--series-2)");
+
+  document.getElementById("t3-am").textContent=meanOf(avgs).toFixed(2);
+  document.getElementById("t3-as").textContent=sdOf(avgs).toFixed(2);
+  document.getElementById("t3-mm").textContent=meanOf(maxs).toFixed(2);
+  document.getElementById("t3-ms").textContent=sdOf(maxs).toFixed(2);
+}
+
+/* ====================== 4 · xi regimes ================================ */
+function draw4(){
+  const xi=+document.getElementById("cv4").value/100;
+  document.getElementById("cv4-val").textContent=(xi>=0?"+":"")+xi.toFixed(2);
+
+  const W=940,H=340,L=54,R=18,T=18,B=44;
+  const x0=-3,x1=10;
+  const X=v=>L+(v-x0)/(x1-x0)*(W-L-R);
+  let endpoint = xi<-1e-6 ? -1/xi : Infinity;
+  let xmaxDraw = isFinite(endpoint) ? Math.min(endpoint,x1) : x1;
+
+  let ymax=0;
+  for(let i=0;i<=600;i++){ const v=x0+(x1-x0)*i/600; if(v>xmaxDraw) break;
+    ymax=Math.max(ymax,gevPdf(v,xi)); }
+  ymax*=1.15;
+  const Y=d=>H-B-(d/ymax)*(H-T-B);
+
+  const s=svgIn(document.getElementById("c4"),W,H);
+  for(let g=0;g<=4;g++){ const yy=T+(H-T-B)*g/4;
+    E("line",{x1:L,x2:W-R,y1:yy,y2:yy,class:"gridline"},s); }
+  for(let v=x0;v<=x1;v+=1) E("text",{x:X(v),y:H-B+16,class:"ax-label","text-anchor":"middle"},s).textContent=v;
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  E("line",{x1:X(6),x2:X(6),y1:T,y2:H-B,stroke:"var(--accent-rule)","stroke-width":1,"stroke-dasharray":"2 3"},s);
+  E("text",{x:X(6)+4,y:T+12,class:"ax-label",fill:"var(--text-muted)"},s).textContent="x = 6 →";
+
+  const col = xi<-0.015 ? "var(--series-1)" : (xi>0.015 ? "var(--series-2)" : "var(--text-secondary)");
+  let d="",started=false;
+  for(let i=0;i<=700;i++){ const v=x0+(x1-x0)*i/700; if(v>xmaxDraw+1e-9) break;
+    d+=(started?"L":"M")+X(v).toFixed(2)+" "+Y(gevPdf(v,xi)).toFixed(2); started=true; }
+  E("path",{d:d+`L${X(xmaxDraw)} ${H-B} L${X(x0)} ${H-B} Z`,fill:col.replace(")", "-soft)").replace("var(--","var(--"),
+            opacity:.13,stroke:"none"},s);
+  E("path",{d,fill:"none",stroke:col,"stroke-width":2.6,"stroke-linejoin":"round"},s);
+  if(isFinite(endpoint) && endpoint<=x1+0.001){
+    E("line",{x1:X(endpoint),x2:X(endpoint),y1:T,y2:H-B,stroke:"var(--series-1)","stroke-width":2},s);
+    E("text",{x:X(endpoint)-6,y:T+12,class:"mark-label","text-anchor":"end",fill:"var(--series-1)"},s)
+      .textContent="hard ceiling";
+  }
+
+  let regime, endLabel;
+  if(Math.abs(xi)<0.015){ regime="Gumbel (ξ≈0)"; endLabel="none — decays fast"; }
+  else if(xi>0){ regime="Fréchet (ξ>0)"; endLabel="none — heavy tail"; }
+  else { regime="Weibull (ξ<0)"; endLabel=endpoint.toFixed(2)+" — finite"; }
+  document.getElementById("t4-regime").textContent=regime;
+  document.getElementById("t4-endpoint").textContent=endLabel;
+  document.getElementById("t4-tail").textContent = (gevSf(6,xi)*100).toPrecision(3)+"%";
+}
+document.getElementById("jump-gumbel").addEventListener("click",()=>{document.getElementById("cv4").value=0;draw4();});
+document.getElementById("jump-kath").addEventListener("click",()=>{document.getElementById("cv4").value=-0.3;draw4();});
+document.getElementById("jump-surk").addEventListener("click",()=>{document.getElementById("cv4").value=39.8;draw4();});
+document.getElementById("jump-weibull").addEventListener("click",()=>{document.getElementById("cv4").value=-30;draw4();});
+
+/* ====================== 5 · stability comparison ======================= */
+function draw5(){
+  const W=940,H=320,L=90,R=40,T=52,B=44;
+  const y0=-0.5,y1=4.0;
+  const X=cat=>cat==="k"? L+(W-L-R)*0.28 : L+(W-L-R)*0.72;
+  const Y=v=>H-B-(v-y0)/(y1-y0)*(H-T-B);
+  const s=svgIn(document.getElementById("c5"),W,H);
+  for(let v=0;v<=3;v++){
+    E("line",{x1:L,x2:W-R,y1:Y(v),y2:Y(v),class:"gridline"},s);
+    E("text",{x:L-10,y:Y(v)+4,class:"ax-label","text-anchor":"end"},s).textContent=v.toFixed(1);
+  }
+  E("line",{x1:L,x2:L,y1:Y(0),y2:Y(0),class:"gridline"},s);
+  E("line",{x1:L,x2:W-R,y1:Y(0),y2:Y(0),stroke:"var(--accent-rule)","stroke-width":1.3},s);
+  E("text",{x:L-10,y:Y(0)+4,class:"ax-label","text-anchor":"end",fill:"var(--text-secondary)"},s).textContent="ξ=0";
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+
+  const stations=[
+    {cat:"k",label:"Kathmandu",mle:-0.003,lo:-0.30,hi:0.26,lmom:-0.002},
+    {cat:"s",label:"Surkhet",  mle: 0.398,lo: 0.08,hi:3.34,lmom: 0.350},
+  ];
+  stations.forEach(st=>{
+    const cx=X(st.cat);
+    E("text",{x:cx,y:22,class:"mark-label","text-anchor":"middle",fill:"var(--text-primary)"},s).textContent=st.label;
+    // MLE whisker
+    const mleX=cx-30;
+    E("line",{x1:mleX,x2:mleX,y1:Y(st.hi),y2:Y(st.lo),stroke:"var(--series-1)","stroke-width":2.4},s);
+    E("line",{x1:mleX-8,x2:mleX+8,y1:Y(st.hi),y2:Y(st.hi),stroke:"var(--series-1)","stroke-width":2.4},s);
+    E("line",{x1:mleX-8,x2:mleX+8,y1:Y(st.lo),y2:Y(st.lo),stroke:"var(--series-1)","stroke-width":2.4},s);
+    E("circle",{cx:mleX,cy:Y(st.mle),r:6,fill:"var(--series-1)",stroke:"var(--surface-1)","stroke-width":2},s);
+    E("text",{x:mleX,y:Math.max(T+12,Y(st.hi)-10),class:"ax-label","text-anchor":"middle",fill:"var(--series-1)"},s)
+      .textContent="MLE "+st.mle.toFixed(2);
+    // L-moments point
+    const lmX=cx+30;
+    E("circle",{cx:lmX,cy:Y(st.lmom),r:6,fill:"var(--series-3)",stroke:"var(--surface-1)","stroke-width":2},s);
+    E("text",{x:lmX,y:Y(st.lmom)+ (st.cat==="s"?-12:20),class:"ax-label","text-anchor":"middle",fill:"var(--series-3)"},s)
+      .textContent="L-mom "+st.lmom.toFixed(2);
+  });
+  E("text",{x:0,y:0,class:"ax-title",transform:`translate(15,${H-B}) rotate(-90)`},s).textContent="ξ ESTIMATE";
+}
+
+/* ============================ wiring ================================ */
+document.getElementById("cv1").addEventListener("input",draw1);
+document.getElementById("cv2").addEventListener("input",draw2);
+document.getElementById("cv3").addEventListener("input",draw3);
+document.getElementById("cv4").addEventListener("input",draw4);
+
+draw1(); draw2(); draw3(); draw4(); draw5();
+let rt; addEventListener("resize",()=>{clearTimeout(rt);
+  rt=setTimeout(()=>{draw1();draw2();draw3();draw4();draw5();},150);});
+</script>
+</body>
+</html>
