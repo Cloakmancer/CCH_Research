@@ -38,6 +38,7 @@ MARKDOWN_MAP: dict[str, str] = {
     "5.StatsStudyLog.md": "stats-study-log.md",
     "5.1.StatsDay1_DistributionShape.md": "stats-day1-distribution-shape.md",
     "5.2.StatsDay2_ProbabilityCopula.md": "stats-day2-probability-and-copulas.md",
+    "5.3.StatsDay3_ExtremeValueTheory.md": "stats-day3-extreme-value-theory.md",
     "6.StatsProblemsDay1.md": "stats-problems-day1.md",
     "7.StatsProblemsDay2.md": "stats-problems-day2.md",
 }

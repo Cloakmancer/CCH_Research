@@ -60,6 +60,8 @@ nav:
       - Day 2 — Probability and Copulas:
           - Notes: stats-day2-probability-and-copulas.md
           - Problem Set: stats-problems-day2.md
+      - Day 3 — Extreme Value Theory:
+          - Notes: stats-day3-extreme-value-theory.md
   - Project:
       - Research Context: research-context.md
       - Research Log: research-log.md
