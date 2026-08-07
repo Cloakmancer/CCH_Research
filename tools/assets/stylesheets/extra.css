@@ -1,75 +1,187 @@
-/* Custom palette: Light Blue #93B7BE, Mint Cream #F1FFFA, Dust Grey #D5C7BC,
-   Smoky Rose #785964, Gunmetal #454545. Requires primary/accent: custom in
-   mkdocs.yml — Material then expects these variables defined here instead of
-   picking from its built-in named colors. */
+/* Custom palette v2 — the warm ember/marigold/plum system built for the Stats
+   Study interactive pages (Correlation_and_Regression_interactive.html and its
+   study-notes companion). Replaces the earlier Smoky Rose / Light Blue / Mint
+   Cream / Gunmetal scheme (tag `pre-redesign` still has that one, and a second
+   tag `pre-warm-palette` marks this file's state right before this change, if
+   either needs reverting to). Requires primary/accent: custom in mkdocs.yml —
+   Material then expects these variables defined here instead of picking from
+   its built-in named colors.
+
+   The raw marigold #dd9c1c used as a background accent on the interactive
+   pages is too light to pass WCAG AA as *text* on a cream background (2.2:1)
+   — darkened to #8f5e08 (5.1:1) wherever it's used as link/accent text below;
+   the lighter value is kept only for transparent highlight washes. */
 [data-md-color-scheme="default"] {
-  --md-primary-fg-color:        #785964; /* Smoky Rose header */
-  --md-primary-fg-color--light: #8a6c76;
-  --md-primary-fg-color--dark:  #5c454d;
-  --md-primary-bg-color:        #f1fffa; /* text/icons on the header */
-  --md-primary-bg-color--light: rgba(241, 255, 250, 0.7);
+  --md-primary-fg-color:        #d84315; /* ember header */
+  --md-primary-fg-color--light: #e2653a;
+  --md-primary-fg-color--dark:  #a83210;
+  --md-primary-bg-color:        #fff6ec; /* text/icons on the header */
+  --md-primary-bg-color--light: rgba(255, 246, 236, 0.7);
 
-  --md-accent-fg-color:         #93b7be; /* Light Blue links/highlights */
-  --md-accent-fg-color--transparent: rgba(147, 183, 190, 0.1);
-  --md-accent-bg-color:         #454545;
-  --md-accent-bg-color--light:  #454545;
+  --md-accent-fg-color:         #8f5e08; /* marigold, darkened for AA text contrast */
+  --md-accent-fg-color--transparent: rgba(221, 156, 28, 0.12);
+  --md-accent-bg-color:         #2c160b;
+  --md-accent-bg-color--light:  #2c160b;
 
-  --md-default-bg-color:        #f1fffa; /* Mint Cream page background */
-  --md-default-fg-color:        #454545; /* Gunmetal body text */
-  --md-default-fg-color--light: #5c5c5c;
-  --md-default-fg-color--lighter: #8a8a8a;
-  --md-default-fg-color--lightest: #d5c7bc;
+  --md-default-bg-color:        #fdf3e6; /* warm cream page background */
+  --md-default-fg-color:        #2c160b; /* espresso-brown body text */
+  --md-default-fg-color--light: #6b4632;
+  --md-default-fg-color--lighter: #93705a;
+  --md-default-fg-color--lightest: #e3bb87;
 
-  --md-typeset-a-color:         #785964; /* Smoky Rose links */
+  --md-typeset-a-color:         #8f5e08; /* darkened marigold links */
+
+  /* Not Material tokens — used only by the section-card / details styling
+     below, to get the study-notes page's "card sits on a slightly deeper
+     page tone" look rather than one flat surface for everything. */
+  --note-surface:  #fff6ec;
+  --note-border:   #e3bb87;
+  --note-shadow:   0 10px 28px -14px rgba(60, 26, 8, .35);
 }
 
-/* Dark mode is deliberately NOT the light palette inverted. It follows the
-   Claude chat scheme: warm near-black surfaces (brown-grey, not blue-grey), a
-   warm off-white for text rather than pure white, and coral as the single
-   accent. The light scheme above is unchanged. */
+/* Dark mode already followed a warm near-black + single-accent scheme before
+   this change (inherited from the Claude chat palette); this just swaps its
+   one accent hue from coral to the same ember used above, and pulls the
+   neutrals from the interactive pages' dark tokens so light and dark mode now
+   read as one system instead of two unrelated warm palettes. */
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color:        #1f1e1d; /* header — the darker of the two surfaces */
-  --md-primary-fg-color--light: #30302e;
-  --md-primary-fg-color--dark:  #171716;
-  --md-primary-bg-color:        #f5f4ef; /* text/icons on the header */
-  --md-primary-bg-color--light: rgba(245, 244, 239, 0.7);
+  --md-primary-fg-color:        #261608; /* header */
+  --md-primary-fg-color--light: #31200e;
+  --md-primary-fg-color--dark:  #1c0f07;
+  --md-primary-bg-color:        #f8e8d4; /* text/icons on the header */
+  --md-primary-bg-color--light: rgba(248, 232, 212, 0.7);
 
-  --md-accent-fg-color:         #d97757; /* coral — links, highlights, hovers */
-  --md-accent-fg-color--transparent: rgba(217, 119, 87, 0.14);
-  --md-accent-bg-color:         #1f1e1d;
-  --md-accent-bg-color--light:  #30302e;
+  --md-accent-fg-color:         #ff7a45; /* ember — links, highlights, hovers */
+  --md-accent-fg-color--transparent: rgba(255, 122, 69, 0.14);
+  --md-accent-bg-color:         #261608;
+  --md-accent-bg-color--light:  #31200e;
 
-  --md-default-bg-color:        #262624; /* page surface */
-  --md-default-bg-color--light:  #30302e; /* raised: tables, admonitions */
-  --md-default-bg-color--lighter: #3a3a37;
-  --md-default-bg-color--lightest: #444441;
+  --md-default-bg-color:        #1c0f07; /* page surface */
+  --md-default-bg-color--light:  #261608; /* raised: tables, admonitions */
+  --md-default-bg-color--lighter: #31200e;
+  --md-default-bg-color--lightest: #3d2811;
 
-  --md-default-fg-color:        #f5f4ef; /* warm off-white, never #fff */
-  --md-default-fg-color--light: #c9c6bd; /* secondary text */
-  --md-default-fg-color--lighter: #918e86; /* muted, captions */
-  --md-default-fg-color--lightest: #4a4945; /* rules and dividers */
+  --md-default-fg-color:        #f8e8d4; /* warm cream, never #fff */
+  --md-default-fg-color--light: #d9b795; /* secondary text */
+  --md-default-fg-color--lighter: #a9835f; /* muted, captions */
+  --md-default-fg-color--lightest: #4d331a; /* rules and dividers */
 
-  --md-typeset-a-color:         #d97757;
-  --md-typeset-mark-color:      rgba(217, 119, 87, 0.28);
+  --md-typeset-a-color:         #ff7a45;
+  --md-typeset-mark-color:      rgba(255, 122, 69, 0.28);
 
-  --md-code-bg-color:           #1f1e1d;
-  --md-code-fg-color:           #e8e6df;
-  --md-code-hl-comment-color:   #918e86;
-  --md-code-hl-string-color:    #b9c99a;
-  --md-code-hl-number-color:    #e0a06a;
-  --md-code-hl-keyword-color:   #d97757;
-  --md-code-hl-function-color:  #8fb6d9;
+  --md-code-bg-color:           #261608;
+  --md-code-fg-color:           #ecdcc8;
+  --md-code-hl-comment-color:   #a9835f;
+  --md-code-hl-string-color:    #c9b458;
+  --md-code-hl-number-color:    #ffc65c;
+  --md-code-hl-keyword-color:   #ff7a45;
+  --md-code-hl-function-color:  #e589a3;
 
   /* Material's default row rule is a cool blue-white at 12%; warm it to match
      the rest of the scheme. Subtle — it is the only table border drawn. */
-  --md-typeset-table-color:     rgba(245, 244, 239, 0.12);
+  --md-typeset-table-color:     rgba(248, 232, 212, 0.12);
 
-  --md-footer-bg-color:         #1f1e1d;
-  --md-footer-bg-color--dark:   #171716;
-  --md-footer-fg-color:         #f5f4ef;
-  --md-footer-fg-color--light:  #918e86;
-  --md-footer-fg-color--lighter: #6b6963;
+  --md-footer-bg-color:         #1c0f07;
+  --md-footer-bg-color--dark:   #140a04;
+  --md-footer-fg-color:         #f8e8d4;
+  --md-footer-fg-color--light:  #a9835f;
+  --md-footer-fg-color--lighter: #5c4128;
+
+  --note-surface:  #261608;
+  --note-border:   #4d331a;
+  --note-shadow:   0 10px 28px -14px rgba(0, 0, 0, .55);
 }
+
+/* The interactive pages set their display type in an italic serif; carry that
+   into the notes for H1/H2 only, so page titles and major section headers
+   read as the same visual family. H3 and below stay Material's default sans
+   — a full-page nav/search/code UI in italic serif would fight legibility
+   rather than add character. */
+.md-typeset h1,
+.md-typeset h2 {
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+/* Section cards — the study-notes page's "one topic, one boxed card" layout,
+   carried over to the notes site. javascripts/sectionize.js does the actual
+   DOM wrapping (grouping each H2 and everything until the next H2 into a
+   .note-card div); this file only styles the result. Content before the
+   first H2 (the H1 and any lead-in paragraph) is left outside any card, same
+   as the interactive pages' masthead. Left sidebar nav, right-hand "on this
+   page" TOC, search and permalinks are all untouched — they read heading ids
+   directly and don't care how deep a heading sits inside the article. */
+.md-typeset { counter-reset: note-section; }
+
+.md-typeset .note-card {
+  background: var(--note-surface);
+  border: 1px solid var(--note-border);
+  border-radius: 16px;
+  padding: 26px 26px 4px;
+  margin: 1.5em 0;
+  box-shadow: var(--note-shadow);
+}
+.md-typeset .note-card > :last-child { margin-bottom: 0; padding-bottom: 26px; }
+
+/* The numbered badge is a CSS counter, not JS-injected text — it always
+   matches how many H2 sections came before it, on every page, for free. */
+.md-typeset .note-card > h2:first-child {
+  counter-increment: note-section;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 0;
+}
+.md-typeset .note-card > h2:first-child::before {
+  content: counter(note-section);
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 17px;
+  box-shadow: 0 3px 0 0 rgba(0, 0, 0, .25);
+}
+
+/* Practice-problem solutions (raw <details markdown="1"> blocks, never
+   Material's ??? admonitions — see tools/STUDY_DAY_PLAYBOOK.md) styled to
+   match the "Show solution" treatment on the interactive study-notes page:
+   a bordered box, a bold accent-coloured summary with a rotating disclosure
+   arrow, no bare browser default triangle. */
+.md-typeset details {
+  border: 1px solid var(--note-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 1em 0;
+  background: var(--note-surface);
+}
+.md-typeset details summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--md-accent-fg-color);
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.md-typeset details summary::-webkit-details-marker { display: none; }
+.md-typeset details summary::marker { content: ""; }
+.md-typeset details summary::before {
+  content: "▸";
+  font-size: .7em;
+  transition: transform .15s;
+}
+.md-typeset details[open] summary::before { transform: rotate(90deg); }
+.md-typeset details > summary + * { margin-top: 10px; }
 
 /* The figures are drawn on a light card (no single ink colour is legible on
    both themes). On the warm dark surface an unframed white rectangle glares —
