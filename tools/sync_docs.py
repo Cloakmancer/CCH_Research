@@ -42,6 +42,7 @@ MARKDOWN_MAP: dict[str, str] = {
     "6.StatsProblemsDay1.md": "stats-problems-day1.md",
     "7.StatsProblemsDay2.md": "stats-problems-day2.md",
     "8.StatsProblemsDay3.md": "stats-problems-day3.md",
+    "Correlation_and_Regression_StudyNotes.md": "stats-day4-correlation-regression.md",
 }
 
 # Deliberately NOT published:
@@ -58,6 +59,7 @@ HTML_MAP: dict[str, str] = {
     "Skewness_and_Tails_interactive.html": "interactive/skewness-and-tails.html",
     "Probability_and_Copulas_interactive.html": "interactive/probability-and-copulas.html",
     "GEV_Extreme_Value_interactive.html": "interactive/gev-extreme-value.html",
+    "Correlation_and_Regression_interactive.html": "interactive/correlation-and-regression.html",
 }
 
 
@@ -237,6 +239,14 @@ def write_interactive_index(published: list[str]) -> None:
             "from the CLT, the three GEV tail regimes with Kathmandu and Surkhet marked as "
             "real examples, and why Surkhet's ξ estimate is so much less stable. "
             "Companion to the Statistics Study Log.",
+        ),
+        "interactive/correlation-and-regression.html": (
+            "Correlation & Regression, Played With",
+            "Six live panels: sculpt a correlation and watch the sample r wobble around your "
+            "target, drag a scatter point and feel leverage, a guess-the-r calibration game, "
+            "fit a regression line by hand against the least-squares minimum, Anscombe's four "
+            "twins, and a correlation-vs-causation confounder gallery. Companion to Day 4 of "
+            "the Statistics Study Log.",
         ),
     }
 

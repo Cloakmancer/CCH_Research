@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Correlation &amp; Regression, Played With</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg:#fbe6d3;
+    --surface:#fff6ec;
+    --surface-2:#f6dab8;
+    --line:#e3bb87;
+    --ink:#2c160b;
+    --ink-soft:#6b4632;
+    --ink-muted:#93705a;
+    --ember:#d84315;
+    --ember-soft:#d843151f;
+    --marigold:#dd9c1c;
+    --marigold-soft:#dd9c1c22;
+    --plum:#7c2d43;
+    --plum-soft:#7c2d4320;
+    --moss:#7c6b1f;
+    --moss-soft:#7c6b1f22;
+    --grid:#ecc99a;
+    --shadow: 0 10px 28px -14px rgba(60,26,8,.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --bg:#1c0f07;
+      --surface:#261608;
+      --surface-2:#31200e;
+      --line:#4d331a;
+      --ink:#f8e8d4;
+      --ink-soft:#d9b795;
+      --ink-muted:#a9835f;
+      --ember:#ff7a45;
+      --ember-soft:#ff7a4526;
+      --marigold:#ffc65c;
+      --marigold-soft:#ffc65c26;
+      --plum:#e589a3;
+      --plum-soft:#e589a326;
+      --moss:#d8bd52;
+      --moss-soft:#d8bd5226;
+      --grid:#3d2811;
+      --shadow: 0 10px 28px -14px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg:#1c0f07; --surface:#261608; --surface-2:#31200e; --line:#4d331a;
+    --ink:#f8e8d4; --ink-soft:#d9b795; --ink-muted:#a9835f;
+    --ember:#ff7a45; --ember-soft:#ff7a4526; --marigold:#ffc65c; --marigold-soft:#ffc65c26;
+    --plum:#e589a3; --plum-soft:#e589a326; --moss:#d8bd52; --moss-soft:#d8bd5226;
+    --grid:#3d2811; --shadow: 0 10px 28px -14px rgba(0,0,0,.55);
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  @media (prefers-reduced-motion: reduce) { *{ transition:none !important; animation:none !important; } }
+
+  body {
+    font-family:-apple-system,"Segoe UI",system-ui,sans-serif;
+    background:
+      radial-gradient(circle at 12% -10%, var(--marigold-soft), transparent 55%),
+      radial-gradient(circle at 92% 8%, var(--ember-soft), transparent 45%),
+      var(--bg);
+    color:var(--ink); padding:0 0 70px; font-size:14px; line-height:1.62;
+  }
+  .wrap { max-width:960px; margin:0 auto; padding:0 20px; }
+  a { color:var(--ember); }
+
+  /* ---------------------------------------------------------- masthead */
+  header.mast {
+    padding:44px 20px 34px; text-align:left; border-bottom:3px solid var(--ink);
+    background:linear-gradient(180deg, var(--surface-2), transparent);
+  }
+  header.mast .inner { max-width:960px; margin:0 auto; }
+  .mast-top { display:flex; align-items:center; justify-content:space-between; gap:16px;
+              flex-wrap:wrap; margin-bottom:10px; }
+  .kicker { font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+            color:var(--ember); margin-bottom:0; }
+  .theme-btn { padding:7px 15px; border-radius:20px; font-size:11.5px; flex:none; }
+  h1.title { font-family:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+             font-style:italic; font-weight:700; font-size:44px; line-height:1.05;
+             letter-spacing:-.01em; text-wrap:balance; max-width:15ch; }
+  .sub { font-size:14.5px; color:var(--ink-soft); margin-top:14px; max-width:62ch; }
+  .rules { display:flex; gap:22px; flex-wrap:wrap; margin-top:20px; }
+  .rule-item { font-size:12px; color:var(--ink-muted); display:flex; align-items:center; gap:7px; }
+  .rule-item .dot { width:8px; height:8px; border-radius:50%; background:var(--ember); flex-shrink:0; }
+
+  section.card { background:var(--surface); border:1px solid var(--line);
+                 border-radius:16px; padding:24px 24px 26px; margin:22px 0;
+                 box-shadow:var(--shadow); }
+  .card-head { display:flex; align-items:flex-start; gap:14px; margin-bottom:4px; }
+  .badge { flex:none; width:38px; height:38px; border-radius:50%; background:var(--ember);
+           color:#fff8ef; font-family:Georgia,serif; font-style:italic; font-weight:700;
+           font-size:17px; display:flex; align-items:center; justify-content:center;
+           box-shadow:0 3px 0 0 color-mix(in srgb, var(--ember) 60%, black 20%); }
+  h2 { font-family:Georgia,"Iowan Old Style",serif; font-style:italic; font-weight:700;
+       font-size:21px; letter-spacing:-.005em; margin-top:2px; }
+  .tagline { font-size:11.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+             color:var(--marigold); margin-top:2px; }
+  .lede { font-size:13.3px; color:var(--ink-soft); max-width:70ch; margin:12px 0 16px; }
+  p { font-size:13.3px; margin-bottom:9px; max-width:70ch; }
+  b { font-weight:700; }
+
+  .say { background:var(--surface-2); border-left:4px solid var(--ember); border-radius:0 10px 10px 0;
+         padding:12px 15px; margin:14px 0 4px; font-size:13.2px; max-width:72ch; }
+  .say.plum { border-left-color:var(--plum); }
+  .say.moss { border-left-color:var(--moss); }
+  em.q { font-style:normal; color:var(--ink); font-weight:700; }
+
+  /* ---------------------------------------------------------- controls */
+  .controls { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;
+              margin:16px 0 16px; padding-bottom:16px; border-bottom:1px dashed var(--line); }
+  .ctl { display:flex; flex-direction:column; gap:6px; min-width:220px; flex:1 1 220px; }
+  .ctl label { font-size:11px; font-weight:700; letter-spacing:.03em; color:var(--ink-soft);
+               text-transform:uppercase; }
+  .ctl .val { font-variant-numeric:tabular-nums; color:var(--ember); font-weight:800;
+              text-transform:none; letter-spacing:0; }
+  input[type=range] { width:100%; accent-color:var(--ember); height:22px; cursor:grab; }
+  button.btn { font:inherit; font-size:12.6px; font-weight:700; padding:9px 16px;
+               border:2px solid var(--ink); background:var(--surface-2); color:var(--ink);
+               border-radius:9px; cursor:pointer; transition:transform .1s, background .12s; }
+  button.btn:hover { background:var(--marigold-soft); }
+  button.btn:active { transform:translateY(1px); }
+  button.btn:focus-visible, input:focus-visible { outline:3px solid var(--marigold); outline-offset:2px; }
+  button.btn.primary { background:var(--ember); color:#fff8ef; border-color:var(--ember); }
+  button.btn.primary:hover { background:color-mix(in srgb, var(--ember) 85%, black 10%); }
+  button.btn[aria-pressed="true"] { background:var(--ink); color:var(--surface); border-color:var(--ink); }
+  .seg { display:flex; gap:6px; flex-wrap:wrap; }
+
+  figure { margin:0; }
+  .chart { width:100%; position:relative; }
+  .chart svg { width:100%; height:auto; display:block; overflow:visible; touch-action:none; }
+  figcaption { font-size:11.6px; color:var(--ink-muted); margin-top:9px; max-width:74ch; }
+  .legend { display:flex; flex-wrap:wrap; gap:16px; margin:4px 0 10px; font-size:12px; color:var(--ink-soft); }
+  .legend span { display:flex; align-items:center; gap:6px; }
+  .swatch { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+  .swatch.line { height:3px; border-radius:2px; }
+
+  text { font-family:inherit; }
+  .ax-label { font-size:11px; fill:var(--ink-muted); font-weight:500; }
+  .ax-title { font-size:10.5px; fill:var(--ink-soft); font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
+  .gridline { stroke:var(--grid); stroke-width:1; }
+  .axisline { stroke:var(--ink); stroke-width:1.3; }
+
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin:16px 0 4px; }
+  .tile { background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:13px 15px; }
+  .tile .t-lab { font-size:10.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-muted); }
+  .tile .t-val { font-size:25px; font-weight:800; letter-spacing:-.02em; margin-top:6px;
+                 font-variant-numeric:tabular-nums; line-height:1.1; font-family:Georgia,serif; }
+  .tile .t-sub { font-size:11.3px; color:var(--ink-soft); margin-top:3px; }
+  .tile.hero { background:var(--ember-soft); border-color:var(--ember); }
+  .tile.hero .t-val { color:var(--ember); font-size:29px; }
+  .tile.win { background:var(--moss-soft); border-color:var(--moss); }
+  .tile.win .t-val { color:var(--moss); }
+
+  table { border-collapse:collapse; width:100%; max-width:100%; font-size:12.5px; margin:14px 0 4px; }
+  table.scroll-wrap { display:block; overflow-x:auto; }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-muted); font-weight:800; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tbody tr:last-child td { border-bottom:none; }
+
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:720px) { .split { grid-template-columns:1fr; } h1.title{ font-size:32px; } }
+
+  ul.lessons { list-style:none; display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+  ul.lessons li { display:flex; gap:12px; font-size:13.3px; align-items:baseline; }
+  ul.lessons li .n { font-family:Georgia,serif; font-style:italic; font-weight:700; color:var(--ember);
+                      flex:none; width:1.4em; }
+
+  footer { font-size:12px; color:var(--ink-muted); border-top:1px solid var(--line);
+           padding-top:16px; margin:30px 20px 0; max-width:920px; margin-left:auto; margin-right:auto; }
+  footer a { text-decoration:none; } footer a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="inner">
+    <div class="mast-top">
+      <div class="kicker">A standalone interactive · not part of the CCH research log</div>
+      <button class="btn theme-btn" id="theme-toggle" type="button">Switch to dark</button>
+    </div>
+    <h1 class="title">Correlation &amp; Regression, Played With</h1>
+    <p class="sub">Six small toys, not a lecture. Drag the points, sculpt the scatter, fit a line
+      by hand and watch it fight you, then meet the four datasets that prove a summary statistic
+      can lie to your face. Every number below is computed live in your browser from whatever
+      you just did to it.</p>
+    <div class="rules">
+      <span class="rule-item"><i class="dot"></i>No calculator needed</span>
+      <span class="rule-item"><i class="dot"></i>Nothing is saved or sent anywhere</span>
+      <span class="rule-item"><i class="dot"></i>Reload for a fresh set of dice</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ============================================================ 1 -->
+<section class="card">
+  <div class="card-head">
+    <div class="badge">1</div>
+    <div>
+      <h2>Sculpt a correlation</h2>
+      <div class="tagline">Pearson's r, from the dial up</div>
+    </div>
+  </div>
+  <p class="lede">Set a <em class="q">target</em> correlation and sixty imaginary students get
+    generated to match it — hours studied against their exam score. Watch two things: how the
+    cloud tightens as |r| climbs toward 1, and how the <em class="q">sample</em> r you actually get
+    wobbles around your target instead of hitting it exactly. Sixty students is not that many.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:1 1 320px">
+      <label>Target correlation, r <span class="val" id="p1-r-val"></span></label>
+      <input type="range" id="p1-r" min="-0.95" max="0.95" step="0.05" value="0.6">
+    </div>
+    <button class="btn" id="p1-resample">Redraw the class</button>
+    <button class="btn" id="p1-line-toggle" aria-pressed="true">Hide regression line</button>
+  </div>
+
+  <figure>
+    <div class="chart" id="p1-chart"></div>
+    <figcaption>Each dot is one (imaginary) student. The line, when shown, is the actual
+      least-squares fit to this sample — not to your target.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Target r</div><div class="t-val" id="p1-target"></div>
+      <div class="t-sub">what you asked for</div></div>
+    <div class="tile hero"><div class="t-lab">Sample r</div><div class="t-val" id="p1-actual"></div>
+      <div class="t-sub">what these 60 students gave back</div></div>
+    <div class="tile"><div class="t-lab">Standardised slope</div><div class="t-val" id="p1-predict"></div>
+      <div class="t-sub">predicted SD move in score per +1 SD of hours</div></div>
+  </div>
+
+  <div class="say"><b>The thing worth noticing:</b> the standardised slope tile always shows the
+    same number as sample r. That is not a coincidence to memorise — for two variables reduced to
+    z-scores, the regression slope <em>is</em> r. Correlation and simple regression are the same
+    fact wearing two outfits: one dimensionless, one in the variables' own units.</div>
+</section>
+
+<!-- ============================================================ 2 -->
+<section class="card">
+  <div class="card-head">
+    <div class="badge">2</div>
+    <div>
+      <h2>Drag it till it hurts</h2>
+      <div class="tagline">One point can out-vote eleven others</div>
+    </div>
+  </div>
+  <p class="lede">Twelve people, cups of coffee against typing speed. Grab any dot and move it —
+    the line and every number below recompute as you drag. Try nudging a middling point a little,
+    then try hauling one lone dot out to a corner. They are not equally powerful.</p>
+
+  <div class="controls">
+    <button class="btn" id="p2-reset">Shuffle a new twelve</button>
+  </div>
+
+  <figure>
+    <div class="chart" id="p2-chart"></div>
+    <figcaption>Drag any point. The gold line is the least-squares fit, recomputed on every move.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile hero"><div class="t-lab">r</div><div class="t-val" id="p2-r"></div>
+      <div class="t-sub">recomputed live</div></div>
+    <div class="tile"><div class="t-lab">Slope</div><div class="t-val" id="p2-slope"></div>
+      <div class="t-sub">extra wpm per extra cup</div></div>
+    <div class="tile"><div class="t-lab">R²</div><div class="t-val" id="p2-r2"></div>
+      <div class="t-sub">share of the spread the line explains</div></div>
+  </div>
+
+  <div class="say plum"><b>What you just found by hand is called leverage.</b> A point far from
+    the average on the x-axis pulls the whole line toward it, whether or not it fits the story the
+    other eleven points are telling. It is the single-point version of the same warning panel 5
+    delivers with a whole quartet.</div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section class="card">
+  <div class="card-head">
+    <div class="badge">3</div>
+    <div>
+      <h2>Guess the r</h2>
+      <div class="tagline">Calibrate your eyeball</div>
+    </div>
+  </div>
+  <p class="lede" id="p3-round-desc">A fresh scatter, a hidden correlation. Slide to your best
+    guess, then reveal it. No penalty for being wrong — the point is finding out how wrong.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:1 1 320px">
+      <label>Your guess <span class="val" id="p3-guess-val"></span></label>
+      <input type="range" id="p3-guess" min="-100" max="100" step="5" value="0">
+    </div>
+    <button class="btn primary" id="p3-reveal">Reveal</button>
+    <button class="btn" id="p3-newround">New round</button>
+  </div>
+
+  <figure>
+    <div class="chart" id="p3-chart"></div>
+    <figcaption id="p3-caption">Judge the cloud, then guess. The axes are standardised so every
+      round looks the same shape of "hard."</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Rounds played</div><div class="t-val" id="p3-rounds">0</div>
+      <div class="t-sub">this session</div></div>
+    <div class="tile hero"><div class="t-lab">Average error</div><div class="t-val" id="p3-avgerr">—</div>
+      <div class="t-sub">|guess − actual|, lower is better</div></div>
+    <div class="tile win"><div class="t-lab">Best guess</div><div class="t-val" id="p3-best">—</div>
+      <div class="t-sub">closest you've landed</div></div>
+    <div class="tile"><div class="t-lab">Actual r</div><div class="t-val" id="p3-actual-display">?</div>
+      <div class="t-sub">hidden until you reveal</div></div>
+  </div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section class="card">
+  <div class="card-head">
+    <div class="badge">4</div>
+    <div>
+      <h2>Fit the line by hand</h2>
+      <div class="tagline">Least squares, the hard way first</div>
+    </div>
+  </div>
+  <p class="lede">Fourteen weeks of ad spend and the sales that followed. Drag the two sliders
+    until you're happy with the line — the red bars are your residuals, the gaps between your line
+    and reality. Least-squares regression is just the slope and intercept that make the
+    <em class="q">total squared length</em> of those bars as small as it can possibly be.</p>
+
+  <div class="controls">
+    <div class="ctl">
+      <label>Slope (units per $100 spend) <span class="val" id="p4-slope-val"></span></label>
+      <input type="range" id="p4-slope" min="-10" max="40" step="0.5" value="0">
+    </div>
+    <div class="ctl">
+      <label>Intercept (units at $0 spend) <span class="val" id="p4-intercept-val"></span></label>
+      <input type="range" id="p4-intercept" min="-100" max="300" step="5" value="100">
+    </div>
+    <button class="btn" id="p4-newdata">Try a new dataset</button>
+    <button class="btn primary" id="p4-reveal">Snap to least squares</button>
+  </div>
+
+  <figure>
+    <div class="chart" id="p4-chart"></div>
+    <figcaption>Red bars = your line sits below the point (you're underpredicting); blue-plum bars
+      = you're above it. Least squares hates long bars quadratically, not linearly.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile"><div class="t-lab">Your total SSE</div><div class="t-val" id="p4-sse"></div>
+      <div class="t-sub">sum of squared residuals</div></div>
+    <div class="tile win"><div class="t-lab">Best possible SSE</div><div class="t-val" id="p4-bestsse"></div>
+      <div class="t-sub">the least-squares minimum</div></div>
+    <div class="tile hero"><div class="t-lab">You're worse by</div><div class="t-val" id="p4-gap"></div>
+      <div class="t-sub">than the best line, in SSE</div></div>
+    <div class="tile"><div class="t-lab">Your implied R²</div><div class="t-val" id="p4-r2"></div>
+      <div class="t-sub">can go negative if your line is bad enough</div></div>
+  </div>
+</section>
+
+<!-- ============================================================ 5 -->
+<section class="card">
+  <div class="card-head">
+    <div class="badge">5</div>
+    <div>
+      <h2>Anscombe's four twins</h2>
+      <div class="tagline">Same statistics, four different stories</div>
+    </div>
+  </div>
+  <p class="lede">Four datasets, constructed in 1973 by the statistician Francis Anscombe. Switch
+    between them — mean of x, mean of y, r, the regression line and R² barely move. What moves is
+    everything a summary statistic can't see.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:0 0 auto;min-width:0">
+      <label>Dataset</label>
+      <div class="seg" id="p5-seg">
+        <button class="btn" data-v="0" aria-pressed="true">I — roughly linear</button>
+        <button class="btn" data-v="1" aria-pressed="false">II — a curve</button>
+        <button class="btn" data-v="2" aria-pressed="false">III — one outlier</button>
+        <button class="btn" data-v="3" aria-pressed="false">IV — one lever</button>
+      </div>
+    </div>
+  </div>
+
+  <figure>
+    <div class="chart" id="p5-chart"></div>
+    <figcaption>Same axes, same line-fitting machinery, every time. Only the eleven points change.</figcaption>
+  </figure>
+
+  <table class="scroll-wrap">
+    <thead><tr><th>n</th><th class="num">mean x</th><th class="num">mean y</th>
+      <th class="num">r</th><th class="num">slope</th><th class="num">intercept</th><th class="num">R²</th></tr></thead>
+    <tbody><tr>
+      <td id="p5-n"></td><td class="num" id="p5-mx"></td><td class="num" id="p5-my"></td>
+      <td class="num" id="p5-r"></td><td class="num" id="p5-slope"></td>
+      <td class="num" id="p5-int"></td><td class="num" id="p5-r2"></td>
+    </tr></tbody>
+  </table>
+
+  <div class="say moss"><b>The lesson isn't "regression is broken."</b> It's that r, the slope and
+    R² are each a single number chosen to summarise an entire cloud of points, and any single
+    number can be hit by more than one cloud. The fix isn't a better statistic — it's <em class="q">plot
+    the data</em>, every time, before you trust the summary.</div>
+</section>
+
+<!-- ============================================================ 6 -->
+<section class="card">
+  <div class="card-head">
+    <div class="badge">6</div>
+    <div>
+      <h2>Correlation is not causation</h2>
+      <div class="tagline">Three suspects, one hidden driver</div>
+    </div>
+  </div>
+  <p class="lede">All three pairs below correlate strongly. None of the first variables cause the
+    second. Pick an example, note the confident-looking r, then reveal what's actually pulling
+    the strings on both of them at once.</p>
+
+  <div class="controls">
+    <div class="ctl" style="flex:0 0 auto;min-width:0">
+      <label>Example</label>
+      <div class="seg" id="p6-seg">
+        <button class="btn" data-v="0" aria-pressed="true">Ice cream &amp; drownings</button>
+        <button class="btn" data-v="1" aria-pressed="false">Shoe size &amp; reading</button>
+        <button class="btn" data-v="2" aria-pressed="false">Firefighters &amp; damage</button>
+      </div>
+    </div>
+    <button class="btn" id="p6-reshuffle">Reshuffle this example</button>
+    <button class="btn primary" id="p6-reveal" aria-pressed="false">Reveal the confounder</button>
+  </div>
+
+  <figure>
+    <div class="chart" id="p6-chart"></div>
+    <figcaption id="p6-caption">Every dot the same colour — as far as this chart can tell, x
+      predicts y directly.</figcaption>
+  </figure>
+
+  <div class="tiles">
+    <div class="tile hero"><div class="t-lab">r(x, y)</div><div class="t-val" id="p6-rxy"></div>
+      <div class="t-sub">the correlation that looks damning</div></div>
+    <div class="tile"><div class="t-lab">r(x, confounder)</div><div class="t-val" id="p6-rxc">?</div>
+      <div class="t-sub" id="p6-rxc-sub">hidden until revealed</div></div>
+    <div class="tile"><div class="t-lab">r(y, confounder)</div><div class="t-val" id="p6-ryc">?</div>
+      <div class="t-sub" id="p6-ryc-sub">hidden until revealed</div></div>
+  </div>
+
+  <p id="p6-explain" style="margin-top:14px; display:none;"></p>
+</section>
+
+<!-- ============================================================ close -->
+<section class="card">
+  <h2 style="margin-bottom:14px">Six things worth keeping</h2>
+  <ul class="lessons">
+    <li><span class="n">i</span> Correlation and simple regression are the same relationship in
+      two units — r is the slope once both variables are standardised.</li>
+    <li><span class="n">ii</span> A single point far from the average on x can swing the whole
+      line. That power is called leverage, and it doesn't care whether the point is trustworthy.</li>
+    <li><span class="n">iii</span> Eyeballing a correlation is a skill with a learning curve, not
+      an innate sense — most people's first guesses are overconfident about weak clouds.</li>
+    <li><span class="n">iv</span> Least-squares regression is a specific optimisation, not a law
+      of nature: the line that minimises <em>total squared</em> vertical distance to the points.</li>
+    <li><span class="n">v</span> Identical r, slope and R² can hide a straight line, a curve, an
+      outlier, or a single lever. Always plot before you trust the summary.</li>
+    <li><span class="n">vi</span> A strong r never tells you which way the arrow points, or
+      whether there's an arrow at all — a third variable can drive two others without either
+      touching the other.</li>
+  </ul>
+</section>
+
+</div>
+
+<footer>
+  <div class="wrap" style="padding:0">
+  Built as a standalone explainer, generated in your browser — nothing here is stored or sent
+  anywhere. All samples are pseudo-random (mulberry32); reload the page for a fresh set, or use
+  each panel's own resample control.
+  </div>
+</footer>
+
+<script>
+"use strict";
+/* ============================ theme toggle ============================ */
+(function(){
+  const root=document.documentElement, btn=document.getElementById('theme-toggle');
+  const prefersDark = () => window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const effective = () => root.getAttribute('data-theme') || (prefersDark() ? 'dark' : 'light');
+  const label = () => { btn.textContent = effective()==='dark' ? 'Switch to light' : 'Switch to dark'; };
+  let stored=null;
+  try{ stored=localStorage.getItem('crx-theme'); }catch(e){}
+  if(stored==='light'||stored==='dark') root.setAttribute('data-theme',stored);
+  label();
+  btn.addEventListener('click', ()=>{
+    const next = effective()==='dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme',next);
+    try{ localStorage.setItem('crx-theme',next); }catch(e){}
+    label();
+  });
+})();
+/* ============================ tiny maths ============================ */
+function clamp(v,lo,hi){ return v<lo?lo:(v>hi?hi:v); }
+
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function gaussFrom(rngFn){
+  let u=0,v=0; while(u===0)u=rngFn(); while(v===0)v=rngFn();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+function pearson(xs,ys){
+  const n=xs.length;
+  let sx=0,sy=0;
+  for(let i=0;i<n;i++){ sx+=xs[i]; sy+=ys[i]; }
+  const mx=sx/n, my=sy/n;
+  let sxy=0,sxx=0,syy=0;
+  for(let i=0;i<n;i++){
+    const dx=xs[i]-mx, dy=ys[i]-my;
+    sxy+=dx*dy; sxx+=dx*dx; syy+=dy*dy;
+  }
+  const r = sxy/Math.sqrt(sxx*syy);
+  const slope = sxy/sxx;
+  const intercept = my-slope*mx;
+  return {r,slope,intercept,mx,my,sxx,syy,sxy,n};
+}
+function sse(xs,ys,m,b){
+  let s=0;
+  for(let i=0;i<xs.length;i++){ const d=ys[i]-(m*xs[i]+b); s+=d*d; }
+  return s;
+}
+function clipLineToRect(m,b,x0,x1,y0,y1){
+  const yAt = x => m*x+b;
+  if(m===0){ const y=b; if(y<y0||y>y1) return null; return [[x0,y],[x1,y]]; }
+  const xAtY0=(y0-b)/m, xAtY1=(y1-b)/m;
+  const xLow=Math.min(xAtY0,xAtY1), xHigh=Math.max(xAtY0,xAtY1);
+  const xa=Math.max(x0,xLow), xb=Math.min(x1,xHigh);
+  if(xa>=xb) return null;
+  return [[xa,yAt(xa)],[xb,yAt(xb)]];
+}
+function lerpColor(hexA,hexB,t){
+  const a=parseInt(hexA.slice(1),16), b=parseInt(hexB.slice(1),16);
+  const ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255;
+  const br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
+  const r=Math.round(ar+(br-ar)*t), g=Math.round(ag+(bg-ag)*t), bl=Math.round(ab+(bb-ab)*t);
+  return `rgb(${r},${g},${bl})`;
+}
+
+/* ============================ svg helpers ============================ */
+const NS="http://www.w3.org/2000/svg";
+function E(tag,attrs,parent){
+  const n=document.createElementNS(NS,tag);
+  for(const k in attrs) n.setAttribute(k,attrs[k]);
+  if(parent) parent.appendChild(n);
+  return n;
+}
+function svgIn(host,w,h){
+  host.innerHTML="";
+  return E("svg",{viewBox:`0 0 ${w} ${h}`,role:"img"},host);
+}
+function chartFrame(host,opt){
+  const W=opt.W||860, H=opt.H||380, L=opt.L||58, R=opt.R||24, T=opt.T||18, B=opt.B||52;
+  const [xd0,xd1]=opt.xDom, [yd0,yd1]=opt.yDom;
+  const s=svgIn(host,W,H);
+  const X = v => L + (v-xd0)/(xd1-xd0)*((W-R)-L);
+  const Y = v => (H-B) - (v-yd0)/(yd1-yd0)*((H-B)-T);
+  const Xinv = px => xd0 + (px-L)/((W-R)-L)*(xd1-xd0);
+  const Yinv = py => yd0 + ((H-B)-py)/((H-B)-T)*(yd1-yd0);
+  (opt.xTicks||[]).forEach(t=>{
+    E("line",{x1:X(t),x2:X(t),y1:T,y2:H-B,class:"gridline"},s);
+    E("text",{x:X(t),y:H-B+18,class:"ax-label","text-anchor":"middle"},s)
+      .textContent = opt.xFmt ? opt.xFmt(t) : t;
+  });
+  (opt.yTicks||[]).forEach(t=>{
+    E("line",{x1:L,x2:W-R,y1:Y(t),y2:Y(t),class:"gridline"},s);
+    E("text",{x:L-10,y:Y(t)+4,class:"ax-label","text-anchor":"end"},s)
+      .textContent = opt.yFmt ? opt.yFmt(t) : t;
+  });
+  E("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,class:"axisline"},s);
+  E("line",{x1:L,x2:L,y1:T,y2:H-B,class:"axisline"},s);
+  if(opt.xLabel) E("text",{x:(L+W-R)/2,y:H-6,class:"ax-title","text-anchor":"middle"},s)
+    .textContent=opt.xLabel;
+  if(opt.yLabel) E("text",{x:16,y:(T+H-B)/2,class:"ax-title","text-anchor":"middle",
+    transform:`rotate(-90 16 ${(T+H-B)/2})`},s).textContent=opt.yLabel;
+  return {svg:s,X,Y,Xinv,Yinv,W,H,L,R,T,B};
+}
+function drawLine(frame,m,b,xDom,yDom,color,width){
+  const clip=clipLineToRect(m,b,xDom[0],xDom[1],yDom[0],yDom[1]);
+  if(!clip) return null;
+  return E("line",{x1:frame.X(clip[0][0]),y1:frame.Y(clip[0][1]),
+                    x2:frame.X(clip[1][0]),y2:frame.Y(clip[1][1]),
+                    stroke:color,"stroke-width":width||3,"stroke-linecap":"round"},frame.svg);
+}
+
+const BASE_SEED = 20260807;
+let rng1=mulberry32(BASE_SEED+1), rng2=mulberry32(BASE_SEED+2), rng3=mulberry32(BASE_SEED+3),
+    rng4=mulberry32(BASE_SEED+4), rng6=mulberry32(BASE_SEED+6);
+
+/* ================== 1 · sculpt a correlation ========================= */
+const P1_XDOM=[0,10], P1_YDOM=[30,100], P1_N=60;
+let p1ShowLine=true;
+function p1Generate(r){
+  const xs=[],ys=[];
+  for(let i=0;i<P1_N;i++){
+    const z1=gaussFrom(rng1), z2=gaussFrom(rng1);
+    const xstd=z1, ystd=r*z1+Math.sqrt(1-r*r)*z2;
+    xs.push(clamp(5+2.1*xstd,0,10));
+    ys.push(clamp(72+11*ystd,30,100));
+  }
+  return {xs,ys};
+}
+let p1Data=p1Generate(0.6);
+function p1Draw(){
+  const target=+document.getElementById('p1-r').value;
+  document.getElementById('p1-r-val').textContent=(target>=0?'+':'')+target.toFixed(2);
+  const host=document.getElementById('p1-chart');
+  const frame=chartFrame(host,{
+    xDom:P1_XDOM, yDom:P1_YDOM, xTicks:[0,2,4,6,8,10], yTicks:[30,45,60,75,90,100],
+    xLabel:"Hours studied", yLabel:"Exam score"
+  });
+  const stats=pearson(p1Data.xs,p1Data.ys);
+  if(p1ShowLine) drawLine(frame,stats.slope,stats.intercept,P1_XDOM,P1_YDOM,"var(--marigold)",3.5);
+  p1Data.xs.forEach((x,i)=>{
+    E("circle",{cx:frame.X(x),cy:frame.Y(p1Data.ys[i]),r:5.5,fill:"var(--ember)",
+      opacity:.82,stroke:"var(--surface)","stroke-width":1.2},frame.svg);
+  });
+  document.getElementById('p1-target').textContent=(target>=0?'+':'')+target.toFixed(2);
+  document.getElementById('p1-actual').textContent=(stats.r>=0?'+':'')+stats.r.toFixed(2);
+  document.getElementById('p1-predict').textContent=(stats.r>=0?'+':'')+stats.r.toFixed(2)+' SD';
+}
+document.getElementById('p1-r').addEventListener('input', ()=>{
+  p1Data=p1Generate(+document.getElementById('p1-r').value); p1Draw();
+});
+document.getElementById('p1-resample').addEventListener('click', ()=>{
+  rng1=mulberry32((Date.now()^0x9e3779b9)>>>0);
+  p1Data=p1Generate(+document.getElementById('p1-r').value); p1Draw();
+});
+document.getElementById('p1-line-toggle').addEventListener('click', e=>{
+  p1ShowLine=!p1ShowLine;
+  e.target.setAttribute('aria-pressed',String(p1ShowLine));
+  e.target.textContent = p1ShowLine ? 'Hide regression line' : 'Show regression line';
+  p1Draw();
+});
+
+/* ================== 2 · drag it till it hurts ======================== */
+const P2_XDOM=[0,8], P2_YDOM=[35,95], P2_N=12;
+let p2Points=[], p2Frame=null, p2LineEl=null;
+function p2Generate(){
+  const pts=[];
+  for(let i=0;i<P2_N;i++){
+    const z1=gaussFrom(rng2), z2=gaussFrom(rng2);
+    const r0=0.55;
+    const x=clamp(4+2.1*z1,0.3,7.7);
+    const y=clamp(63+13*(r0*z1+Math.sqrt(1-r0*r0)*z2),38,92);
+    pts.push({x,y});
+  }
+  return pts;
+}
+function p2Build(){
+  p2Points=p2Generate();
+  const host=document.getElementById('p2-chart');
+  p2Frame=chartFrame(host,{
+    xDom:P2_XDOM, yDom:P2_YDOM, xTicks:[0,2,4,6,8], yTicks:[35,50,65,80,95],
+    xLabel:"Cups of coffee that morning", yLabel:"Typing speed (wpm)"
+  });
+  p2LineEl=E("line",{x1:0,y1:0,x2:0,y2:0,stroke:"var(--marigold)","stroke-width":3.5,
+    "stroke-linecap":"round"},p2Frame.svg);
+  p2Points.forEach((pt,i)=>{
+    const c=E("circle",{cx:p2Frame.X(pt.x),cy:p2Frame.Y(pt.y),r:9,fill:"var(--ember)",
+      stroke:"var(--surface)","stroke-width":2.2},p2Frame.svg);
+    c.style.cursor="grab"; c.style.touchAction="none";
+    let dragging=false;
+    c.addEventListener('pointerdown', ev=>{ dragging=true; c.setPointerCapture(ev.pointerId); c.style.cursor="grabbing"; });
+    const move = ev=>{
+      if(!dragging) return;
+      const host2=document.getElementById('p2-chart');
+      const rect=host2.getBoundingClientRect();
+      const svx=(ev.clientX-rect.left)*p2Frame.W/rect.width;
+      const svy=(ev.clientY-rect.top)*p2Frame.H/rect.height;
+      const nx=clamp(p2Frame.Xinv(svx),P2_XDOM[0],P2_XDOM[1]);
+      const ny=clamp(p2Frame.Yinv(svy),P2_YDOM[0],P2_YDOM[1]);
+      p2Points[i]={x:nx,y:ny};
+      c.setAttribute('cx',p2Frame.X(nx)); c.setAttribute('cy',p2Frame.Y(ny));
+      p2UpdateStats();
+    };
+    c.addEventListener('pointermove', move);
+    c.addEventListener('pointerup', ()=>{ dragging=false; c.style.cursor="grab"; });
+    c.addEventListener('pointercancel', ()=>{ dragging=false; c.style.cursor="grab"; });
+  });
+  p2UpdateStats();
+}
+function p2UpdateStats(){
+  const xs=p2Points.map(p=>p.x), ys=p2Points.map(p=>p.y);
+  const stats=pearson(xs,ys);
+  const clip=clipLineToRect(stats.slope,stats.intercept,P2_XDOM[0],P2_XDOM[1],P2_YDOM[0],P2_YDOM[1]);
+  if(clip){
+    p2LineEl.setAttribute('x1',p2Frame.X(clip[0][0])); p2LineEl.setAttribute('y1',p2Frame.Y(clip[0][1]));
+    p2LineEl.setAttribute('x2',p2Frame.X(clip[1][0])); p2LineEl.setAttribute('y2',p2Frame.Y(clip[1][1]));
+    p2LineEl.style.display='';
+  } else { p2LineEl.style.display='none'; }
+  document.getElementById('p2-r').textContent=(stats.r>=0?'+':'')+stats.r.toFixed(2);
+  document.getElementById('p2-slope').textContent=(stats.slope>=0?'+':'')+stats.slope.toFixed(1)+' wpm/cup';
+  document.getElementById('p2-r2').textContent=(stats.r*stats.r).toFixed(2);
+}
+document.getElementById('p2-reset').addEventListener('click', ()=>{
+  rng2=mulberry32((Date.now()^0x85ebca6b)>>>0);
+  p2Build();
+});
+
+/* ================== 3 · guess the r =================================== */
+const P3_XDOM=[-3,3], P3_YDOM=[-3,3], P3_N=45;
+const PAIR_LABELS=[
+  ["Minutes on hold","Rage-quit likelihood"],
+  ["Podcast playback speed","Comprehension score"],
+  ["Plants owned","Bug-free coding streak"],
+  ["Spice level ordered","Compliments to the chef"],
+  ["Days until deadline","Procrastination index"],
+  ["Cats in the room","Focus during meetings"],
+];
+let p3Actual=0.5, p3Xs=[], p3Ys=[], p3Revealed=false, p3Rounds=0, p3SumErr=0, p3Best=Infinity;
+function p3NewRound(){
+  p3Actual = Math.round((rng3()*1.8-0.9)*20)/20;
+  const xs=[],ys=[];
+  for(let i=0;i<P3_N;i++){
+    const z1=gaussFrom(rng3), z2=gaussFrom(rng3);
+    xs.push(clamp(z1,-3,3));
+    ys.push(clamp(p3Actual*z1+Math.sqrt(1-p3Actual*p3Actual)*z2,-3,3));
+  }
+  p3Xs=xs; p3Ys=ys; p3Revealed=false;
+  const [xl,yl]=PAIR_LABELS[Math.floor(rng3()*PAIR_LABELS.length)];
+  document.getElementById('p3-round-desc').textContent =
+    `This round: "${xl}" against "${yl}" (units hidden — everything's standardised). Slide to your best guess, then reveal it.`;
+  document.getElementById('p3-actual-display').textContent='?';
+  document.getElementById('p3-caption').textContent =
+    'Judge the cloud, then guess. The axes are standardised so every round looks the same shape of "hard."';
+  p3Draw();
+}
+function p3Draw(){
+  const host=document.getElementById('p3-chart');
+  const frame=chartFrame(host,{
+    xDom:P3_XDOM, yDom:P3_YDOM, xTicks:[-3,-1.5,0,1.5,3], yTicks:[-3,-1.5,0,1.5,3],
+    xLabel:"Variable A (z-score)", yLabel:"Variable B (z-score)"
+  });
+  p3Xs.forEach((x,i)=>{
+    E("circle",{cx:frame.X(x),cy:frame.Y(p3Ys[i]),r:5,fill:"var(--ember)",opacity:.8,
+      stroke:"var(--surface)","stroke-width":1},frame.svg);
+  });
+  if(p3Revealed){
+    const stats=pearson(p3Xs,p3Ys);
+    drawLine(frame,stats.slope,stats.intercept,P3_XDOM,P3_YDOM,"var(--marigold)",3.5);
+  }
+}
+document.getElementById('p3-guess').addEventListener('input', ()=>{
+  const g=(+document.getElementById('p3-guess').value)/100;
+  document.getElementById('p3-guess-val').textContent=(g>=0?'+':'')+g.toFixed(2);
+});
+document.getElementById('p3-reveal').addEventListener('click', ()=>{
+  if(p3Revealed) return;
+  const guess=(+document.getElementById('p3-guess').value)/100;
+  const err=Math.abs(guess-p3Actual);
+  p3Rounds++; p3SumErr+=err; p3Best=Math.min(p3Best,err); p3Revealed=true;
+  document.getElementById('p3-actual-display').textContent=(p3Actual>=0?'+':'')+p3Actual.toFixed(2);
+  document.getElementById('p3-rounds').textContent=p3Rounds;
+  document.getElementById('p3-avgerr').textContent=(p3SumErr/p3Rounds).toFixed(2);
+  document.getElementById('p3-best').textContent=p3Best.toFixed(2);
+  document.getElementById('p3-caption').textContent=
+    `You guessed ${(guess>=0?'+':'')+guess.toFixed(2)}, actual was ${(p3Actual>=0?'+':'')+p3Actual.toFixed(2)} — off by ${err.toFixed(2)}. Gold line is the real fit.`;
+  p3Draw();
+});
+document.getElementById('p3-newround').addEventListener('click', p3NewRound);
+
+/* ================== 4 · fit the line by hand ========================= */
+let P4_X=[], P4_Y=[], p4Stats=null;
+function p4Generate(){
+  const xs=[],ys=[];
+  for(let i=0;i<14;i++){
+    const x=clamp(i*1.45+gaussFrom(rng4)*0.6,0,20);
+    const y=clamp(60+15*x+gaussFrom(rng4)*45,10,450);
+    xs.push(x); ys.push(y);
+  }
+  return {xs,ys};
+}
+function p4Reset(){
+  const d=p4Generate(); P4_X=d.xs; P4_Y=d.ys;
+  p4Stats=pearson(P4_X,P4_Y);
+  document.getElementById('p4-slope').value='0';
+  document.getElementById('p4-intercept').value=Math.round(p4Stats.my/5)*5;
+  p4Draw();
+}
+function p4Draw(){
+  const m=+document.getElementById('p4-slope').value;
+  const b=+document.getElementById('p4-intercept').value;
+  document.getElementById('p4-slope-val').textContent=(m>=0?'+':'')+m.toFixed(1);
+  document.getElementById('p4-intercept-val').textContent=(b>=0?'+':'')+b.toFixed(0);
+  const xDom=[0,20], yDom=[0,460];
+  const host=document.getElementById('p4-chart');
+  const frame=chartFrame(host,{
+    xDom, yDom, xTicks:[0,5,10,15,20], yTicks:[0,115,230,345,460],
+    xLabel:"Ad spend ($100s / week)", yLabel:"Weekly sales (units)"
+  });
+  drawLine(frame,p4Stats.slope,p4Stats.intercept,xDom,yDom,"var(--moss)",2.2)
+    ?.setAttribute('stroke-dasharray','2 6');
+  P4_X.forEach((x,i)=>{
+    const y=P4_Y[i], yhat=m*x+b;
+    const col = y>=yhat ? "var(--ember)" : "var(--plum)";
+    E("line",{x1:frame.X(x),y1:frame.Y(y),x2:frame.X(x),y2:frame.Y(yhat),
+      stroke:col,"stroke-width":2.6,opacity:.75},frame.svg);
+  });
+  drawLine(frame,m,b,xDom,yDom,"var(--marigold)",3.5);
+  P4_X.forEach((x,i)=>{
+    E("circle",{cx:frame.X(x),cy:frame.Y(P4_Y[i]),r:5.5,fill:"var(--ink)",
+      stroke:"var(--surface)","stroke-width":1.2},frame.svg);
+  });
+  const yourSSE=sse(P4_X,P4_Y,m,b);
+  const bestSSE=p4Stats.syy - p4Stats.slope*p4Stats.sxy;
+  const gapPct = bestSSE>0 ? ((yourSSE-bestSSE)/bestSSE*100) : 0;
+  const yourR2 = 1 - yourSSE/p4Stats.syy;
+  document.getElementById('p4-sse').textContent=Math.round(yourSSE).toLocaleString();
+  document.getElementById('p4-bestsse').textContent=Math.round(bestSSE).toLocaleString();
+  document.getElementById('p4-gap').textContent = gapPct<0.5 ? 'basically 0%' : '+'+gapPct.toFixed(0)+'%';
+  document.getElementById('p4-r2').textContent=yourR2.toFixed(2);
+}
+['p4-slope','p4-intercept'].forEach(id=>document.getElementById(id).addEventListener('input',p4Draw));
+document.getElementById('p4-newdata').addEventListener('click', ()=>{
+  rng4=mulberry32((Date.now()^0xc2b2ae35)>>>0); p4Reset();
+});
+document.getElementById('p4-reveal').addEventListener('click', ()=>{
+  document.getElementById('p4-slope').value=p4Stats.slope.toFixed(1);
+  document.getElementById('p4-intercept').value=Math.round(p4Stats.intercept/5)*5;
+  p4Draw();
+});
+
+/* ================== 5 · anscombe's four twins ========================= */
+const ANS_X=[10,8,13,9,11,14,6,4,12,7,5];
+const ANSCOMBE=[
+  {y:[8.04,6.95,7.58,8.81,8.33,9.96,7.24,4.26,10.84,4.82,5.68], x:ANS_X},
+  {y:[9.14,8.14,8.74,8.77,9.26,8.10,6.13,3.10,9.13,7.26,4.74], x:ANS_X},
+  {y:[7.46,6.77,12.74,7.11,7.81,8.84,6.08,5.39,8.15,6.42,5.73], x:ANS_X},
+  {y:[6.58,5.76,7.71,8.84,8.47,7.04,5.25,12.50,5.56,7.91,6.89],
+   x:[8,8,8,8,8,8,8,19,8,8,8]},
+];
+let p5Active=0;
+function p5Draw(){
+  const set=ANSCOMBE[p5Active];
+  const stats=pearson(set.x,set.y);
+  const xDom=[2,20], yDom=[2,14];
+  const host=document.getElementById('p5-chart');
+  const frame=chartFrame(host,{
+    xDom, yDom, xTicks:[2,6,10,14,18], yTicks:[2,5,8,11,14],
+    xLabel:"x", yLabel:"y"
+  });
+  drawLine(frame,stats.slope,stats.intercept,xDom,yDom,"var(--marigold)",3.5);
+  set.x.forEach((x,i)=>{
+    E("circle",{cx:frame.X(x),cy:frame.Y(set.y[i]),r:6,fill:"var(--ember)",opacity:.85,
+      stroke:"var(--surface)","stroke-width":1.4},frame.svg);
+  });
+  document.getElementById('p5-n').textContent=stats.n;
+  document.getElementById('p5-mx').textContent=stats.mx.toFixed(2);
+  document.getElementById('p5-my').textContent=stats.my.toFixed(2);
+  document.getElementById('p5-r').textContent=stats.r.toFixed(3);
+  document.getElementById('p5-slope').textContent=stats.slope.toFixed(3);
+  document.getElementById('p5-int').textContent=stats.intercept.toFixed(2);
+  document.getElementById('p5-r2').textContent=(stats.r*stats.r).toFixed(3);
+}
+document.getElementById('p5-seg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  [...document.getElementById('p5-seg').querySelectorAll('button')].forEach(b=>
+    b.setAttribute('aria-pressed', String(b===btn)));
+  p5Active=+btn.dataset.v; p5Draw();
+});
+
+/* ================== 6 · correlation is not causation ================== */
+const P6_EXAMPLES=[
+  { xLabel:"Ice cream sales ($1,000s/month)", yLabel:"Drowning incidents (per month)",
+    cLabel:"Temperature", xDom:[0,900], yDom:[0,12],
+    gen(rng){
+      const x=[],y=[],c=[];
+      for(let i=0;i<40;i++){
+        const month=rng()*12;
+        const temp=22+9*Math.sin((month/12)*2*Math.PI-Math.PI/2);
+        x.push(clamp(180+17*temp+gaussFrom(rng)*55,20,900));
+        y.push(clamp(1.6+0.32*temp+gaussFrom(rng)*1.3,0,12));
+        c.push(clamp((temp-13)/18,0,1));
+      }
+      return {x,y,c};
+    },
+    explain:"Both ice cream sales and drownings track the temperature — hot months mean more ice "+
+      "cream <em>and</em> more people swimming. Nobody's cone is pulling anyone under."
+  },
+  { xLabel:"Shoe size (US)", yLabel:"Reading score (words/min)",
+    cLabel:"Age (years)", xDom:[0,14], yDom:[-30,90],
+    gen(rng){
+      const x=[],y=[],c=[];
+      for(let i=0;i<40;i++){
+        const age=rng()*8+4;
+        x.push(clamp(3+0.85*age+gaussFrom(rng)*0.6,1,14));
+        y.push(clamp(-20+9*age+gaussFrom(rng)*8,-30,90));
+        c.push((age-4)/8);
+      }
+      return {x,y,c};
+    },
+    explain:"Both feet and vocabularies grow with age. Buying a seven-year-old bigger shoes will "+
+      "not teach them to read faster."
+  },
+  { xLabel:"Firefighters at the scene", yLabel:"Property damage ($)",
+    cLabel:"Fire severity (0–1)", xDom:[0,30], yDom:[0,260000],
+    gen(rng){
+      const x=[],y=[],c=[];
+      for(let i=0;i<40;i++){
+        const sev=rng();
+        x.push(clamp(3+22*sev+gaussFrom(rng)*3,1,30));
+        y.push(clamp(8000+230000*sev+gaussFrom(rng)*15000,0,260000));
+        c.push(sev);
+      }
+      return {x,y,c};
+    },
+    explain:"Bigger fires get more firefighters sent to them <em>and</em> do more damage. Sending "+
+      "fewer firefighters to a five-alarm blaze would not save the building."
+  },
+];
+let p6Active=0, p6Data=null, p6Revealed=false;
+function p6Load(){
+  const ex=P6_EXAMPLES[p6Active];
+  p6Data=ex.gen(rng6);
+  p6Revealed=false;
+  document.getElementById('p6-reveal').setAttribute('aria-pressed','false');
+  document.getElementById('p6-reveal').textContent='Reveal the confounder';
+  document.getElementById('p6-explain').style.display='none';
+  document.getElementById('p6-rxc').textContent='?';
+  document.getElementById('p6-ryc').textContent='?';
+  document.getElementById('p6-rxc-sub').textContent='hidden until revealed';
+  document.getElementById('p6-ryc-sub').textContent='hidden until revealed';
+  document.getElementById('p6-caption').textContent=
+    'Every dot the same colour — as far as this chart can tell, x predicts y directly.';
+  p6Draw();
+}
+function p6Draw(){
+  const ex=P6_EXAMPLES[p6Active];
+  const host=document.getElementById('p6-chart');
+  const frame=chartFrame(host,{
+    xDom:ex.xDom, yDom:ex.yDom,
+    xTicks:linTicks(ex.xDom), yTicks:linTicks(ex.yDom),
+    xLabel:ex.xLabel, yLabel:ex.yLabel,
+    yFmt: v => ex.yDom[1]>5000 ? Math.round(v/1000)+'k' : v,
+    xFmt: v => ex.xDom[1]>5000 ? Math.round(v/1000)+'k' : Math.round(v*10)/10
+  });
+  p6Data.x.forEach((x,i)=>{
+    const fill = p6Revealed ? lerpColor('#dd9c1c','#7c2d43',p6Data.c[i]) : 'var(--ember)';
+    E("circle",{cx:frame.X(x),cy:frame.Y(p6Data.y[i]),r:6,fill,opacity:.85,
+      stroke:"var(--surface)","stroke-width":1.4},frame.svg);
+  });
+  const rxy=pearson(p6Data.x,p6Data.y).r;
+  document.getElementById('p6-rxy').textContent=(rxy>=0?'+':'')+rxy.toFixed(2);
+  if(p6Revealed){
+    const rxc=pearson(p6Data.x,p6Data.c).r, ryc=pearson(p6Data.y,p6Data.c).r;
+    document.getElementById('p6-rxc').textContent=(rxc>=0?'+':'')+rxc.toFixed(2);
+    document.getElementById('p6-ryc').textContent=(ryc>=0?'+':'')+ryc.toFixed(2);
+    document.getElementById('p6-rxc-sub').textContent='with '+ex.cLabel.toLowerCase();
+    document.getElementById('p6-ryc-sub').textContent='with '+ex.cLabel.toLowerCase();
+  }
+}
+function linTicks(dom){
+  const [a,b]=dom, out=[];
+  for(let i=0;i<=4;i++) out.push(a+(b-a)*i/4);
+  return out;
+}
+document.getElementById('p6-seg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  [...document.getElementById('p6-seg').querySelectorAll('button')].forEach(b=>
+    b.setAttribute('aria-pressed', String(b===btn)));
+  p6Active=+btn.dataset.v; p6Load();
+});
+document.getElementById('p6-reshuffle').addEventListener('click', ()=>{
+  rng6=mulberry32((Date.now()^0x27d4eb2f)>>>0); p6Load();
+});
+document.getElementById('p6-reveal').addEventListener('click', e=>{
+  p6Revealed=!p6Revealed;
+  e.target.setAttribute('aria-pressed', String(p6Revealed));
+  e.target.textContent = p6Revealed ? 'Hide the confounder' : 'Reveal the confounder';
+  const expl=document.getElementById('p6-explain');
+  if(p6Revealed){
+    const ex=P6_EXAMPLES[p6Active];
+    expl.innerHTML='<b>The confounder:</b> '+ex.cLabel+'. '+ex.explain;
+    expl.style.display='block';
+    document.getElementById('p6-caption').textContent=
+      'Colour now maps to '+ex.cLabel.toLowerCase()+' (light = low, dark = high). The gradient runs along the cloud, not across it.';
+  } else {
+    expl.style.display='none';
+    document.getElementById('p6-caption').textContent=
+      'Every dot the same colour — as far as this chart can tell, x predicts y directly.';
+  }
+  p6Draw();
+});
+
+/* ================== boot ============================================= */
+p1Draw();
+p2Build();
+p3NewRound();
+p4Reset();
+p5Draw();
+p6Load();
+window.addEventListener('resize', ()=>{ p1Draw(); p2UpdateStats(); p3Draw(); p4Draw(); p5Draw(); p6Draw(); });
+</script>
+</body>
+</html>
